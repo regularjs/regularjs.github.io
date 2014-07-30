@@ -171,10 +171,10 @@ Syntax
 <div r-animation="Sequence"></div>
 
 Sequence:
-  Command (; Command)*
+  Command (";" Command)*
 
 Command:
-  CommandName: Param
+  CommandName":" Param
 
 CommandName: [-\w]+
 
@@ -460,7 +460,7 @@ just as the logic described by the template. the sequence will never stopped.
 
 
 
-> ## More info: [Animation on guide]()
+> ## More info: [Regularjs's Guide](http://leeluolee.gitbooks.io/regular-guide/)
 
 
 

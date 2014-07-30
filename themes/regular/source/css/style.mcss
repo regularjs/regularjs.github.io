@@ -95,6 +95,13 @@ h1{
     font-size: 3em;
     line-height:  2em;
   }
+  .icon{
+    float: right;
+    line-height: 84px;
+    &:hover{
+      color: $primary;
+    }
+  }
 }
 
 .m-refer{
