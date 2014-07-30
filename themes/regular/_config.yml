@@ -1,7 +1,7 @@
 menu:
   Example: /example/markdown.html
-  Guide: http://leeluolee.gitbooks.io/regular-guide/
-  # API: /api/classes/Regular.html
+  Guide: /guide
+  API: /api/classes/MyClass.html
   Blog: /blog/
 
 example_siderbar:
@@ -11,6 +11,9 @@ example_siderbar:
   performance: Performance
   slider: Simple Slider
   todomvc: Todomvc
+
+global_link:
+  guide: /guide
 	
 
 swiftype_key: fDxc-hEngMPFuZ1VP_FJ
