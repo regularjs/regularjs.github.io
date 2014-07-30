@@ -1,0 +1,20 @@
+// color
+$bgcolor = #34495e;
+$primary = #f17288;
+$inverse = #1abc9c;
+$gray= #7f8c8d;
+$light-gray = #ECF0F1;
+$error = #E74C3C;
+
+
+
+
+$state-color = ($base){
+  color: $base;
+  &:hover{
+    color: l-adjust($base, -5%);
+  }
+  &:active{
+    color: l-adjust($base, +3%);
+  }
+}

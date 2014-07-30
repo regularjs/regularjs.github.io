@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head prefix="og: http://ogp.me/ns#">
+  <meta charset="utf-8">
+  <title>Regularjs - <% if (page.title){ %><%= page.title %> | <% } %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="shortcut icon" href="/icon.png" >
+  <link rel="canonical" href="<%- page.permalink %>">
+  <%- css('bower_components/codemirror/lib/codemirror') %>
+  <%- css('css/style') %>
+  <%- feed_tag('atom.xml') %>
+  <%- open_graph({
+    twitter_site: '@' + theme.twitter,
+    image: url_for('logo.png')
+  }) %>
+</head>

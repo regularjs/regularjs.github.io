@@ -1,0 +1,7 @@
+{
+  "name": "todomvc-regularjs",
+  "dependencies": {
+    "regularjs": "~0.1.0",
+    "todomvc-common": "~0.1.9"
+  }
+}

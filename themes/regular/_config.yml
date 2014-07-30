@@ -1,0 +1,18 @@
+menu:
+  Example: /example/markdown.html
+  Guide: http://leeluolee.gitbooks.io/regular-guide/
+  # API: /api/classes/Regular.html
+  Blog: /blog/
+
+example_siderbar:
+  markdown: Markdown Editor
+  modal: Modal Component
+  pager: Linked Pager
+  performance: Performance
+  slider: Simple Slider
+  todomvc: Todomvc
+	
+
+swiftype_key: fDxc-hEngMPFuZ1VP_FJ
+twitter: regularjs
+github: regularjs/regular

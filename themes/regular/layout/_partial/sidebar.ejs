@@ -1,0 +1,11 @@
+<% var layoutName = page.layout, sidebars = theme[layoutName+"_siderbar"]  %>
+<% if (sidebars) { %> 
+<div class="g-sd">
+  <ul class="m-menu">
+  <% _.each(sidebars, function(text, link){ %>
+    <li><a href="<%- url_for(layoutName + '/' + link) + ".html" %>" class="link<% if (is_current(layoutName + '/' + link +".html", true)){ %> active<% } %>"><%= text %></a></li>
+  <% }) %>
+  </ul>
+</div>
+<% } %>
+
