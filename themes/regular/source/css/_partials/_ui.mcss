@@ -23,6 +23,7 @@
   text-align: center;
   line-height: 1.4em;
   padding: .5em .6em;
+  cursor: pointer;
 }
 
 

@@ -460,7 +460,7 @@ just as the logic described by the template. the sequence will never stopped.
 
 
 
-> ## More info: [Regularjs's Guide](/guide)
+> ### if the post is helpful to you,  [gives regularjs a star](https://github.com/regularjs/regular)
 
 
 

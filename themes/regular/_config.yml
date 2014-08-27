@@ -1,8 +1,8 @@
 menu:
   Example: /example/markdown.html
   Guide: /guide
-  API: /api/classes/MyClass.html
   Blog: /blog/
+  Github: https://github.com/regularjs/regular
 
 example_siderbar:
   markdown: Markdown Editor
@@ -19,3 +19,4 @@ global_link:
 swiftype_key: fDxc-hEngMPFuZ1VP_FJ
 twitter: regularjs
 github: regularjs/regular
+google_analytics: UA-54220110-1
