@@ -67,6 +67,7 @@ Component[Function]: {Component self%组件本身}
 
 
 <!-- t -->
+
 <!-- s -->
 
 
@@ -101,7 +102,7 @@ __小技巧__: 通过__implement__ 与 __extend__ 扩展的方法，都可以通
 
 > "Regular的类式继承体系来源于著名的[ded/klass](https://github.com/ded/klass)."
 
-__Example__
+__Example >__
 
 ```js
 var SubComponent = Component.extend({
@@ -117,6 +118,7 @@ Component.implement({
 })
 
 ```
+
 
 
 <!-- /t -->
@@ -409,7 +411,7 @@ __Arguments__
 |name|String| {filter name%过滤器名称}|
 |factory|Function| {Factory function for creating new filter %创建新的自定义过滤器}|
 
-__Example__
+__Example >__
 
 {dateformat filter%一个简单的日期格式化过滤器}
 
@@ -479,7 +481,7 @@ __Argument__
 |factory|Function| Factory function for creating event type|
 
 
-__Example__
+__Example >__
 <!-- t -->
 <!-- s -->
 当按下ESC时，触发on-exit事件
@@ -506,7 +508,7 @@ Component.event()
 
 注册一个组件，使其可以被,　这里等同于在[options](#options)中声明`name`
 
-__Example__
+__Example >__
 
 ```js
 
@@ -640,7 +642,7 @@ __Arguments__
 |settings.END|Function| END_TAG|
 
 
-__Example__
+__Example >__
 
 <!-- t -->
 
@@ -696,7 +698,7 @@ __Usage__
 
 `Regular.parse( templateString )`
 
-__Example__
+__Example >__
 
 ```javascript
 Regular.parse("<h2>{title}</h2>")
@@ -754,7 +756,7 @@ __Arguments__
 |element|`Node` `false` | {reference element, if __false__ be passed, the component will be removed from document%被插入节点，如果传入__false__则代表将此组件从dom中移除}|
 |direction_(optional default:'bottom')_|String| {The place to inject this component. Can be%组件的位置插入目标的位置.　可以是} 'top', 'bottom', 'after', or 'before'.|
 
-__Example__
+__Example >__
 
 {imagine you already have a component like:%假设你已经有这样一个组件}
 
@@ -953,7 +955,7 @@ __Arguments__
 
 
 
-__Example__
+__Example >__
 
 ```javascript
 
@@ -1010,7 +1012,7 @@ __Usage__
 获得一个Expression的值,类似于angular的$eval函数.
 }
 
-__Example__
+__Example >__
 
 ```js
 component.data.username = "leeluolee"
@@ -1031,7 +1033,7 @@ you can use attribute [ref] to mark a __Node__ or __Component__, after compiling
 在模板中，你可以使用`ref`属性来标记一个节点或组件.　在实例化后，你可以通过component.$refs 来获取你标记的节点
 }
 
-__Example__
+__Example >__
 
 ```html
 
@@ -1184,7 +1186,7 @@ __Argument__
 |--|--|--|
 |mute|Boolean|{whether to disable this component(you can active it later use $mute(false))%是否disable这个组件(可以后续重启它)}|
 
-__Example__
+__Example >__
 
 ```js
 
@@ -1462,7 +1464,7 @@ add a eventlisener on specifed element. the following property on event object h
 - event.stopPropagation();
 - event.preventDefault();
 
-__Example__
+__Example >__
 
 ```javascript
 var dom = Regular.dom;

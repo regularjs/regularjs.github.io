@@ -57,6 +57,7 @@ Component[Function]: Component self
 
 
 
+
 ### Component.implement(options)
 
 <!-- t -->
@@ -337,7 +338,7 @@ __Arguments__
 |name|String| filter name|
 |factory|Function| Factory function for creating new filter |
 
-__Example__
+__Example >__
 
 dateformat filter
 
@@ -418,7 +419,7 @@ Component.event()
 
 注册一个组件，使其可以被,　这里等同于在[options](#options)中声明`name`
 
-__Example__
+__Example >__
 
 ```js
 
@@ -533,7 +534,7 @@ __Arguments__
 |settings.END|Function| END_TAG|
 
 
-__Example__
+__Example >__
 
 <!-- t -->
 
@@ -582,7 +583,7 @@ __Usage__
 
 `Regular.parse( templateString )`
 
-__Example__
+__Example >__
 
 ```javascript
 Regular.parse("<h2>{title}</h2>")
@@ -636,7 +637,7 @@ __Arguments__
 |element|`Node` `false` | reference element, if __false__ be passed, the component will be removed from document|
 |direction_(optional default:'bottom')_|String| The place to inject this component. Can be 'top', 'bottom', 'after', or 'before'.|
 
-__Example__
+__Example >__
 
 imagine you already have a component like:
 
@@ -815,7 +816,7 @@ __Arguments__
 
 
 
-__Example__
+__Example >__
 
 ```javascript
 
@@ -866,7 +867,7 @@ __Usage__
 
 
 
-__Example__
+__Example >__
 
 ```js
 component.data.username = "leeluolee"
@@ -885,7 +886,7 @@ component.$get('username + ":" + job') // => leeluolee:developer
 you can use attribute [ref] to mark a __Node__ or __Component__, after compiling, you can use `component.$refs.someRef` to find them.
 
 
-__Example__
+__Example >__
 
 ```html
 
@@ -1026,7 +1027,7 @@ __Argument__
 |--|--|--|
 |mute|Boolean|whether to disable this component(you can active it later use $mute(false))|
 
-__Example__
+__Example >__
 
 ```js
 
@@ -1198,7 +1199,7 @@ add a eventlisener on specifed element. the following property on event object h
 - event.stopPropagation();
 - event.preventDefault();
 
-__Example__
+__Example >__
 
 ```javascript
 var dom = Regular.dom;
