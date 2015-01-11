@@ -3,15 +3,17 @@
   "version": "2.6.0",
   "private": true,
   "dependencies": {
-    "mcss": "^0.5.0",
-    "hexo-renderer-ejs": "^0.1.0",
-    "hexo-renderer-marked": "^0.1.0",
-    "hexo-renderer-jade": "^0.1.0",
-    "hexo-yuidoc": "^0.2.2",
+    "hexo-generator-feed": "^0.2.0",
     "hexo-generator-sitemap": "^0.2.0",
-    "hexo-generator-feed": "^0.2.0"
+    "hexo-renderer-ejs": "^0.1.0",
+    "hexo-renderer-jade": "^0.1.0",
+    "hexo-renderer-marked": "^0.1.0",
+    "hexo-yuidoc": "^0.2.2",
+    "mcss": "^0.5.0"
   },
   "devDependencies": {
+    "gulp-util": "^3.0.2",
+    "through2": "^0.6.3",
     "gulp": "^3.6.2",
     "gulp-clean": "^0.2.4",
     "gulp-yuidoc": "^0.1.2",

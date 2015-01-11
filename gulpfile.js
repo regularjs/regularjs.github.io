@@ -2,6 +2,7 @@ var gulp = require('gulp'),
   yuidoc = require('gulp-yuidoc'),
   clean = require('gulp-clean'),
   shell = require('gulp-shell'),
+  translate = require("./scripts/gulp-translate.js"),
   rename = require('gulp-rename');
 
 gulp.task('clean-regular', function(){
@@ -33,6 +34,23 @@ gulp.task('yuidoc-regular', ['clone-regular'], function(){
 
 gulp.task('yuidoc', ['yuidoc-regular']);
 
-gulp.task('default', ['yuidoc'], function(){
-  return gulp.start('clean-regular');
-});
+
+gulp.task('doc:split', function(){
+  return gulp.src(["source/_api/_docs/*.md"]) 
+    .pipe(translate({}))
+    .pipe(gulp.dest("source/_api/docs"))
+})
+
+gulp.task("api", ["doc"], function(){
+  gulp.src(['./source/_api/**/*'])
+  .pipe(gulp.dest("./public/api"))
+})
+
+gulp.task('generate', shell.task(['hexo generate']))
+
+
+gulp.task("doc", ["doc:split"])
+
+gulp.task("watch", function(){
+  return gulp.watch(["source/_api/_docs/*.md"], ["api"]);
+})

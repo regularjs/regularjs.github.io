@@ -513,7 +513,7 @@ h1{
   h2{
     font-size: 2.4em;
   }
-  .codepen{
+  .codep{
     width: 30%;
     float: left;
     text-align: center;
@@ -1036,7 +1036,7 @@ $bounceOut();
     }
   }
   .m-extenal{
-    .codepen{
+    .codep{
       float: none;
       width: 100%;
     }
