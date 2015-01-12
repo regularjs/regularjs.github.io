@@ -110,9 +110,55 @@ alert(i === 1);
 ###过滤器Filter
 
 
+regularjs 当然也支持模板中普遍存在于模板中的过滤器，过滤器支持链式的多重调用.
+
+其中过滤器本身通过`Component.filter()` 注册, 可在<a href="?api-zh#filter" target=_blank>API文档</a>进行查看.
+
+
+
+
 __syntax__
 
 `Expression| fitlerName: arg1, arg2,... argN `
+
+
+
+```
+//Add filte
+
+Regular.filter( "last" , function(obj) {
+  return obj[obj.length - 1];
+};
+
+Regular.filter( "lowercase" , function(obj) {
+  return (obj|).toLowerCase();
+};
+```
+
+
+```
+// Template 
+
+<div>{list|last|lowercase}</div>
+```
+
+with data `{list: ['Add','Update','Delete']}`, output:
+
+```
+// output
+<div>delete</div>
+```
+
+
+__Builtin Filters__
+
+
+目前没有内置filter,　如果需要请开一个issue 来描述你的需求, 目前作者没有想到必须支持的过滤器. 而dateformat等常用的，往往需要引入较大的代码量.
+
+
+
+
+
 
 ###Range
 
@@ -263,9 +309,105 @@ the example above.
 
 
 <a href="#" name="composite"></a>
+
 ##内嵌组件
 
-All Component in regularjs is composite.
+
+
+在编译阶段(AST -> DOM)，每当regularjs碰到一个节点例如
+(其中，我们假定__`custom-pager`__是一个已注册的组件)
+
+
+- `<custom-pager attr1={user} attr2=user on-nav={this.nav()}></custom-pager>` 
+- `<div class="text" r-hide={!text}></div>`
+
+
+
+将会发生以下过程
+
+- 查找当前命名空间下是否可以找到注册为对应名字的组件
+- 如果找到,　则视其为内嵌组件(如`custom-pager`),　会执行流程1
+  1. 创建一个空对象`data`.
+  2. 如果有子元素, 子内容(AST)会作为实例的[`$body`属性](#transclude), 你可以配合 #include 来使用它
+  3. 遍历每个属性，
+    - 如果不是事件则作为`data`的一个属性值,　如果为插值则建立父组件与子组件的__双向绑定_-
+    - 如果是事件名`on-xx`,则注册为Emitter事件,相当于`this.$on(xx, ...)`
+  4. 初始化组件, `data`会作为参数传入
+  5. 插入到父组件的内容中
+- 如果没有找对应组件名 ,则执行流程2
+  1. 创建一个节点`document.createElement(tagName)`
+  2. 编译它的子元素(如果有的话)，并塞入节点.
+  3. 遍历属性值, 根据插值,指令, 事件等分别处理它们
+  4. 将节点插入到父组件的内容中
+
+流程1即我们所说的内嵌组件. 注意内嵌组件无法使用指令, 因为它并不是一个真实节点，而是一种抽象.
+
+
+
+
+
+
+- __For Example__
+
+  
+  __external__组件的模板中声明
+  
+
+  ```html
+  <pager current={current} total=100 
+    on-nav={this.hello()} 
+    on-end='end' />
+  ```
+
+  
+  就相当于是(参数请查看[API:options](?api-zh#options))
+  
+  
+
+  ```js
+  
+  var pager = new Pager({
+    events: {
+      nav : function(){
+        extenal.hello();
+      },
+      end: function(){
+        extenal.$emit('end');
+      }
+    },
+    data:{
+      total: "100"
+    }
+  })
+  pager.$bind(extenal, 'current');
+  ```
+
+  
+  其中extenal代表嵌入它的外层组件. 其中事件的处理与dom事件几乎完全一致，区别就是$event参数变成了你`$emit`的事件参数.
+  
+
+
+
+[【DEMO】](http://jsfiddle.net/leeluolee/DCFXn/)
+
+
+where
+  
+  - template in `#external`
+    
+    ```html
+    {list.length}:{current}
+     <pager total={Math.floor(list.length/20)} 
+            current={current} 
+            on-nav={this.changePage($event)}/>
+
+     <pager total={Math.floor(list.length/20)} 
+            current={current} 
+            on-nav='nav' />
+    ```
+
+
+
 
 
 
@@ -430,7 +572,7 @@ __Example >__
 {/list}
 ```
 
-[【DEMO】](http://jsfiddle.net/leeluolee/nKK8D/light/)
+[【DEMO】](http://jsfiddle.net/leeluolee/nKK8D/)
 
 
 
@@ -494,20 +636,27 @@ __Example__
 <input {#if !disabled} r-model={username} {/if}>
 ```
 
-If condition is evaluated to false, the affcted attribute, event listener and directive will be removed or destroyed;
+
+根据判断依据，指令、属性或事件会被添加或移除
 
 
 
 
+[【Demo】](http://codepen.io/leeluolee/pen/JqAaH)
+
+
+
+
+<a name="include"></a>
 ##include
 
-include specifies that the some content should be replaced with the interpolation of the template. 
+
+include 用来标准引入一些内容，这些内容可能需要在初始化后指定，或可能发生变动。
+
 
 __syntax__
 
-```dust
-{#include Expression}
-```
+` {#include template} `
 
 
 __where__
@@ -590,9 +739,10 @@ modal.$on('confirm', function(data){
 
 ```
 
-【DEMO】
+[【DEMO】](http://fiddle.jshell.net/leeluolee/Xvp9S/)
 
 
+<a name="transclude"></a>
 ###*内嵌片段Transclude
 
 
@@ -604,14 +754,13 @@ for example
 ```html
 <div>
   <modal>
-    <input r-model={user} type=text>
-    <input r-model={email} type=password>
+    <input r-model={email} >
   </modal>
 </div>
 ```
 
 
-transcluded片段 `<input r-model={user} type=text><input r-model={email} type=password>` 作为 `$body` 属性传入到`modal`组件.
+transcluded片段 `<input r-model={email}>` 作为 `$body` 属性传入到`modal`组件.
 
 它等同于
 <!-- /t -->
@@ -620,8 +769,7 @@ transcluded片段 `<input r-model={user} type=text><input r-model={email} type=p
 ```js
 new Modal({
   $body: 
-    "<input r-model={user} type=text>\
-     <input r-model={email} type=password>"
+    "<input r-model={email}>"
   // ...
 })
 ```
@@ -630,14 +778,46 @@ new Modal({
 所以你可以在Modal的模板使用`#include this.$body`来注入这段transcluded模板
 
 
+
+
+使用transcluded内容重写我们的modal组件
+
+
+
+
 ```js
 
 {#include this.$body}
 ```
 
+js
 
-[【DEMO】]()
 
+```js
+
+Regular.component('modal', Modal);
+
+var app = new Regular({
+    template: "<modal title='please confirm your email'  on-confirm='confirm'>\
+      <input class='form-control'  r-model={email} >\
+    </modal>"
+});
+app.$on('confirm', function(data){
+  alert(data.email)
+});
+```
+
+
+[【DEMO】](http://fiddle.jshell.net/leeluolee/wfpgx9d9/)
+
+
+
+在这里例子里，我们将内层modal的confirm事件代理到了外层组件的confirm事件，当然你也可以使用表达式执行的方式
+
+
+```html
+on-confirm={this.confirm($event)}
+```
 
 
 

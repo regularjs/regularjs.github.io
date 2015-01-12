@@ -21,7 +21,7 @@ module.exports = function (opt) {
 
     var str = file.contents.toString('utf8');
 
-    var str_zh = str.replace(/<\!-- t -->[\s\S]*?<\!-- s -->/g, "").replace(/|+([^{}]+)\%([^{}]+)\}/g,function(all, one, two){
+    var str_zh = str.replace(/<\!-- t -->[\s\S]*?<\!-- s -->/g, "").replace(/\{([^{}]+)\%([^{}]+)\}/g,function(all, one, two){
       return two;
     })
     var str_en = str.replace(/<\!-- s -->[\s\S]*?<\!-- \/t -->/g, "").replace(/\{([^\{}]+)\%([^\{}]+)\}/g,function(all, one, two){

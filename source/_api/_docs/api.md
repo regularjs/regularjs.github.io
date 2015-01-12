@@ -40,7 +40,9 @@ __Usage:__
 
 ```js
 var Component = Regular.extend({
-  template: "<div><h2 on-click={this.changeTitle(title + '1')}>{title}</h2><div>{content}</div></div>",
+  template: 
+    "<div><h2 on-click={this.changeTitle(title + '1')}>{title}</h2>\
+    <div>{content}</div></div>",
 
   config: function(){},
   init: function(){},
@@ -360,6 +362,8 @@ console.log(component.data.prop1) // ==> 1
 ```
 
 
+<a id="directive"></a>
+
 
 ### Component.directive
 
@@ -391,12 +395,19 @@ __Arguments__
 
 
 
+<a id="filter"></a>
 
 ### Component.filter
+
 
 __Usage__
 
 `Component.filter(name, factory)`
+
+
+
+
+
 
 
 <!-- t -->

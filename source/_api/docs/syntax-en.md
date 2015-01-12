@@ -18,7 +18,7 @@ I will use `rgl` to represent the Regularjs's built template engine
 
 Expression are usually placed in bindings such as 
 
-1. inteplation: `{ Expression }`
+1. interpolation: `{ Expression }`
 2. rule: `{#list Expression as item}` , `{#if Expression}`...
 
 and also can be used in some method like `$watch`,`$get`, `$update`
@@ -118,9 +118,53 @@ As shown above, binding-once __may make the data not synchronized with the ui__.
 ###Filter
 
 
+regularjs supports the concept of "filters", A "filter chain" is a designer friendly api for manipulating data.
+
+you can use `Component.filter()` to register a filter, see <a href="?api-en#filter" target=_blank>API:filter</a> for detail
+
+
 __syntax__
 
 `Expression| fitlerName: arg1, arg2,... argN `
+
+
+
+```
+//Add filte
+
+Regular.filter( "last" , function(obj) {
+  return obj[obj.length - 1];
+};
+
+Regular.filter( "lowercase" , function(obj) {
+  return (obj|).toLowerCase();
+};
+```
+
+
+```
+// Template 
+
+<div>{list|last|lowercase}</div>
+```
+
+with data `{list: ['Add','Update','Delete']}`, output:
+
+```
+// output
+<div>delete</div>
+```
+
+
+__Builtin Filters__
+
+
+no builtin filters now.
+
+
+
+
+
 
 ###Range
 
@@ -178,7 +222,7 @@ new Component({
 
 error throw by the Expression `blog.user.name` is ignored, 
 
-but this.methodNoFound(...)` still throw  "undefined is not a function"
+but this.methodNoFound(...)` still throw  "Uncaught TypeError: undefined is not a function "
 
 
 ```
@@ -199,7 +243,7 @@ __Syntax__
 
 `{Expression}`
 
-###text inteplation
+###text interpolation
 
 
 
@@ -228,7 +272,7 @@ the example above will output `<div>leeluolee</div>`. once the data changes, the
 
 
 
-###attribute inteplation
+###attribute interpolation
 
 
 When used as attribute-interpolation(only the attributeValue can be interpolated).
@@ -240,7 +284,7 @@ When used as attribute-interpolation(only the attributeValue can be interpolated
 
 2. if the attribute is not a directive, once the value changes, the attribute's value will be updated immediately. it is a __one-way binding__.
 
-3. if the attribute is a directive(include event), regularjs will call the directive's link method but do nothing else. all logic is controlled by directive self.
+3. if the attribute is a directive(include event), regularjs will call the directive's link method but do nothing else. all logic is controlled by [directive](?api-en#directive) self.
 
 
 
@@ -274,9 +318,104 @@ the example above.
 
 
 <a href="#" name="composite"></a>
-##Composite component 
 
-All Component in regularjs is composite.
+##nested component 
+
+
+
+during compiling(AST-> DOM) phase, every time rgl saw a tagName, for example (assume that `custom-pager` has been registered yet) 
+
+
+- `<custom-pager attr1={user} attr2=user on-nav={this.nav()}></custom-pager>` 
+- `<div class="text" r-hide={!text}></div>`
+
+
+
+The process will be performed as follows:
+
+  - detect whether the component has been registered
+  - if true (like `custom-pager`), we will consider it as a nested component
+    1. create a plainObject `data`
+    2. if has children(AST), it will be passed into nested component as the [$body](#transclude) property, you can use it  through [`#include`](#include) .
+    3. traversing the attribute list
+      - if attrbuteName isn't  eventType (prefix `on-` ), `rgl` will merge it to `data`, if the attributeValue is a Interpolation, a __two-way binding__ will be created between it and external component 
+      - if attributeName is a Event, rgl will register specified event.
+    4. initialize the nested component with `data`.
+    5. inject it to extenal component
+  - if not registered yet. rgl will consider it as a normal dom element (no matter it is a valid htmltag or not).
+    1. create a element by `document.createElement(tagName)`
+    2. compiling its content
+    3. traversing the attribute list
+      1. if attributeName is `on-xx`: register dom event.
+      2. if attribute is a registered [directive](?api-en#directive): call specifed `directive.link` to operate.
+      3. otherwise, setAttribute. if attributeName is a Intepolation, create __one-way binding__ 
+    4. inject element to extenal component.
+
+
+
+
+
+- __For Example__
+
+  
+  in the template of the component named `external`
+  
+
+  ```html
+  <pager current={current} total=100 
+    on-nav={this.hello()} 
+    on-end='end' />
+  ```
+
+  
+  which is equals to: 
+  
+  
+
+  ```js
+  
+  var pager = new Pager({
+    events: {
+      nav : function(){
+        extenal.hello();
+      },
+      end: function(){
+        extenal.$emit('end');
+      }
+    },
+    data:{
+      total: "100"
+    }
+  })
+  pager.$bind(extenal, 'current');
+  ```
+
+  
+  the way regularjs dealing with component's event  is very similar with dom event. the only difference is: the `$event` param represent the 2nd params that you passed to function `$emit`.
+  
+
+
+
+[【DEMO】](http://jsfiddle.net/leeluolee/DCFXn/)
+
+
+where
+  
+  - template in `#external`
+    
+    ```html
+    {list.length}:{current}
+     <pager total={Math.floor(list.length/20)} 
+            current={current} 
+            on-nav={this.changePage($event)}/>
+
+     <pager total={Math.floor(list.length/20)} 
+            current={current} 
+            on-nav='nav' />
+    ```
+
+
+
 
 
 
@@ -439,7 +578,7 @@ __Example >__
 {/list}
 ```
 
-[【DEMO】](http://jsfiddle.net/leeluolee/nKK8D/light/)
+[【DEMO】](http://jsfiddle.net/leeluolee/nKK8D/)
 
 
 
@@ -502,20 +641,28 @@ __Example__
 <input {#if !disabled} r-model={username} {/if}>
 ```
 
+
 If condition is evaluated to false, the affcted attribute, event listener and directive will be removed or destroyed;
 
 
 
 
+[【Demo】](http://codepen.io/leeluolee/pen/JqAaH)
+
+
+
+
+<a name="include"></a>
 ##include
+
+
 
 include specifies that the some content should be replaced with the interpolation of the template. 
 
+
 __syntax__
 
-```dust
-{#include Expression}
-```
+` {#include template} `
 
 
 __where__
@@ -597,9 +744,10 @@ modal.$on('confirm', function(data){
 
 ```
 
-【DEMO】
+[【DEMO】](http://fiddle.jshell.net/leeluolee/Xvp9S/)
 
 
+<a name="transclude"></a>
 ###*Transclude with include 
 
 
@@ -611,14 +759,13 @@ for example
 ```html
 <div>
   <modal>
-    <input r-model={user} type=text>
-    <input r-model={email} type=password>
+    <input r-model={email} >
   </modal>
 </div>
 ```
 
 <!-- t -->
-the transcluded content `<input r-model={user} type=text><input r-model={email} type=password>` will be assigned as `$body` property  to `modal`.
+the transcluded content `<input r-model={email} >` will be assigned as `$body` property  to `modal`.
 
 it is equals to
 
@@ -628,8 +775,7 @@ it is equals to
 ```js
 new Modal({
   $body: 
-    "<input r-model={user} type=text>\
-     <input r-model={email} type=password>"
+    "<input r-model={email}>"
   // ...
 })
 ```
@@ -639,14 +785,48 @@ new Modal({
 so, you can use transcluded content(`$body`) in Modal's template by using `include`.
 
 
+
+
+use "transcluded content" to rewrite our `modal` demo
+
+
+
+
 ```js
 
 {#include this.$body}
 ```
 
+js
 
-[【DEMO】]()
 
+```js
+
+Regular.component('modal', Modal);
+
+var app = new Regular({
+    template: "<modal title='please confirm your email'  on-confirm='confirm'>\
+      <input class='form-control'  r-model={email} >\
+    </modal>"
+});
+app.$on('confirm', function(data){
+  alert(data.email)
+});
+```
+
+
+[【DEMO】](http://fiddle.jshell.net/leeluolee/wfpgx9d9/)
+
+
+
+
+In this Example, we redirect the `confirm` event from modal to  app. you can also use interpolation to run a paricular expression.
+
+
+
+```html
+on-confirm={this.confirm($event)}
+```
 
 
 

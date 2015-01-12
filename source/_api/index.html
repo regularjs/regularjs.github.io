@@ -55,6 +55,9 @@
    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
     font-size: 12px;
   }
+  .content pre > code{
+    
+  }
 
   </style>
 
@@ -127,7 +130,9 @@
   $(document).on('flatdoc:ready', function() {
     // I don't like this section to appear
     if(location.hash && location.hash !== "#"){
-      $.anchorjump(location.hash);
+      $('html, body').animate({
+        scrollTop: $(location.hash).offset().top
+      }, 100);
     }
    
   });
