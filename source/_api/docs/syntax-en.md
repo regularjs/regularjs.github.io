@@ -28,10 +28,16 @@ rgl almost implement the Expressions of ES5 specification
 
 For example, these are valid expressions in regularjs:
 
+
+
+
 - 100 + 'b'.
-- 'a' + 'b'
 - user? 'login': 'logout'
-- login && items[index][this.nav(item.index)].method1()
+- title = title + '1'
+- !isLogin && this.login()
+- items[index][this.nav(item.index)].method1()
+
+
 
 Tips:
 
@@ -41,13 +47,15 @@ Tips:
 4. literal regexp is not supported
 5. you can directly use some global Object like:
 
+
+
   - Array Date JSON Math NaN RegExp Object String
   - decodeURI decodeURIComponent encodeURI encodeURIComponent 
   - parseFloat parseInt 
 
 
 
-Beside ES5 Expression, regularjs also support some useful Expression element.
+Beside ES5 Expression, regularjs also support some useful Expression type. I will introduce them in following sections.
 
 
 
@@ -58,6 +66,8 @@ Beside ES5 Expression, regularjs also support some useful Expression element.
 Beacuse the dirty-check's performance is tightly related to the counts of the data-binding, the less binding is created, the better.
 
 regularjs provide `BindOnce Expression` to help developer to control the binding more easily.
+
+Once the Expression is evalauted to value that isn't equals to `undefined`, the binding attached to it will be destroied by [component.$unwatch](?api-en#unwatch)
 
 
 __syntax__
@@ -114,14 +124,8 @@ As shown above, binding-once __may make the data not synchronized with the ui__.
 
 
 
-
+<a id="filter"></a>
 ###Filter
-
-
-regularjs supports the concept of "filters", A "filter chain" is a designer friendly api for manipulating data.
-
-you can use `Component.filter()` to register a filter, see <a href="?api-en#filter" target=_blank>API:filter</a> for detail
-
 
 __syntax__
 
@@ -129,7 +133,7 @@ __syntax__
 
 
 
-```
+```js
 //Add filte
 
 Regular.filter( "last" , function(obj) {
@@ -142,7 +146,7 @@ Regular.filter( "lowercase" , function(obj) {
 ```
 
 
-```
+```html
 // Template 
 
 <div>{list|last|lowercase}</div>
@@ -150,17 +154,14 @@ Regular.filter( "lowercase" , function(obj) {
 
 with data `{list: ['Add','Update','Delete']}`, output:
 
-```
+```html
 // output
 <div>delete</div>
 ```
 
 
-__Builtin Filters__
 
-
-no builtin filters now.
-
+__see [Component.filter](?api-en#filter) for Detail__
 
 
 
@@ -308,7 +309,7 @@ __Example__
 
 the example above.
 
-1. `r-model`: directive
+1. `r-model`: directive, see [builtin](?api-en#builtin)
 2. `style`: string-interpolation
 3. `class`: simple attribute interpolation
 4. `type`: just normal attribute
@@ -316,8 +317,7 @@ the example above.
 
 
 
-
-<a href="#" name="composite"></a>
+<a href="#" id="composite"></a>
 
 ##nested component 
 

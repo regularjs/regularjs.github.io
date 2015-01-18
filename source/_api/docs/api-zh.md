@@ -1,5 +1,4 @@
 
-# API 指南
 
 
 [完善此页 >](https://github.com/regularjs/blog/edit/master/source/_api/_docs/api.md)
@@ -10,7 +9,7 @@
 ## 静态接口
 
 
-__注意:__ 
+__ 命名约定 __
 
 - `Component` 表示此接口同时属于`Regular`及其子类. 
 - `Regular`　表示此接口只属于Regular本身(一般为全局配置参数)
@@ -37,9 +36,8 @@ var Component = Regular.extend({
 
   config: function(){},
   init: function(){},
-
-  changeTitle: function(newTitle){
-    this.data.title = newtiTle;
+  changeTitle: function(title){
+    this.data.title = title;
   }
 })
 
@@ -55,14 +53,10 @@ __Arguments__
 
 __Return__ 
 
-Component[Function]: 组件本身
+SubComponent[Function]: 继承自Component的组件
 
 
 
-
-
-
-<!-- /t -->
 
 
 ### Component.implement(options)
@@ -83,6 +77,11 @@ __Arguments__
 |--|--|--|
 |options|Object|组件定义和配置,见 [__options__](#options)|
 
+__Return__ 
+
+
+Component[Function]: 组件本身
+
 
 
 
@@ -90,6 +89,8 @@ __Arguments__
 __小技巧__: 通过__implement__ 与 __extend__ 扩展的方法，都可以通过`this.supr(arg1, arg2..)`调用父类同名函数
 
 > "Regular的类式继承体系来源于著名的[ded/klass](https://github.com/ded/klass)."
+
+
 
 __Example >__
 
@@ -110,7 +111,7 @@ Component.implement({
 
 
 
-<!-- /t -->
+
 
 
 ### new Component(options)
@@ -140,7 +141,7 @@ __Arguments__
 
 __Return__
 
- Component的实例: 查看实例接口](#instance)
+ Component的实例: [ 查看实例接口](#instance)
 
 
 
@@ -150,7 +151,7 @@ __Return__
 <!-- /t -->
 
 
-<a href="#" name="options"></a>
+<a href="##" name="options"></a>
 ### options *
 
 the options for define a Component. all property we don't 
@@ -174,7 +175,7 @@ the options for define a Component. all property we don't
 
 
 
-即传入的Regularjs模板字符串，你需要遵循[模板语法](#template)（放心，比你用过的任何模板都要简单），当然在代码中拼接字符串模板是件肮脏的活，你可以参考[【模板模块化以及预解析模板】](#)来优雅的管理你的模板。
+即传入的Regularjs模板字符串，你需要遵循[模板语法](#template)（放心，比你用过的任何模板都要简单），当然在代码中拼接字符串模板是件肮脏的活，你可以参考[【模板模块化以及预解析模板】](##)来优雅的管理你的模板。
 
 
 
@@ -225,6 +226,7 @@ component.destory();
 
 
 
+注册组件到父组件的命名空间内，使其可以被[__内嵌使用__](?syntax-zh#composite)
 
 
 ```js
@@ -240,7 +242,7 @@ var Component2 = SuperComponent.extend({
 ```
 
  
-这是[component](#component)
+还有一种更一致的方式是使用[Component.component](#component),　示例实际上等同于:
 
 
 
@@ -252,7 +254,11 @@ var Component = SuperComponent.extend({});
 SuperComponent.component('foo1', Component)
 ```
 
-but method `component` is much powerful than property `name`, because, `component()` can register Component extended from whatever SuperComponent. 
+
+  
+但是`Component.component`显然更强大，它可以注册任意组件(无论继承自何组件)，而且从模块化角度来讲，在使用时，再决定名字也是一种良好也更安全的实践
+
+
 
 ```js
 
@@ -261,34 +267,6 @@ var Component = Regular.extend({});
 SuperComponent.component('foo1', Component)
 ```
 
-
-#### computed: 
-
-
-- type: Object| Function | String
-
-
-你可以定义计算属性,　来避免在模板中描述复杂的表达式. 具体请参阅[【计算属性】](#)
-
-一个典型的例子: 列表项的全选功能，我们可以利用计算属性来实现此功能.
-
-```js
-Regular.extend({
-  computed: {
-   allCompleted: {
-      get: function( data ){
-        return data.todos.length === this.getList('completed').length
-      },
-      set: function( checked, data ){
-        data.todos.forEach( function(item){
-          item.completed = checked;
-        })
-      }
-    }
-  }
-})
-
-```
 
 #### events
 
@@ -348,9 +326,6 @@ __Usage__
 
 
 设置自定义指令,　类似与Angularjs中的指令, Regularjs可以通过设置指令来增加节点功能. 由于Regularjs本身的组件化思维，以及模板本身已经拥有强大的描述能力，所以指令的功能在这里被弱化。
-
-
-
 <!-- /t -->
 
 __Arguments__
@@ -358,10 +333,7 @@ __Arguments__
 |Param|Type|Detail|
 |--|--|--|
 |name|String| 指令名称|
-|factory|Function| 创建新的自定义事件|
-
-
-
+|factory|Function|  创建新的自定义事件 |
 
 
 
@@ -377,13 +349,12 @@ __Usage__
 
 
 
+regularjs 当然也支持普遍存在于模板中的过滤器，过滤器支持链式的多重调用. 
+
+regularjs也支持[__双向过滤__](#two-way-filter)
 
 
 
-
-
-设置自定义过滤器
-<!-- /t -->
 
 __Arguments__
 
@@ -440,7 +411,48 @@ Regular.filter("format", filter)
 
 
 
-<a href="#" name="event"></a>
+<a href="##" id="two-way-fitler"></a>
+####  双向过滤器
+
+
+双向过滤器主要是帮助我们实现数据的对流, 对任意数据读或写操作时可以进行过滤操作, 与计算属性不同的是，双向过滤器定义是不与具体的数据进行绑定,它是一种可复用的抽象.
+
+
+
+
+#### 内建过滤器
+
+
+如果需要请开一个issue 来描述你的需求, 目前作者没有想到必须支持的过滤器. 而dateformat等常用的，往往需要引入较大的代码量.
+
+
+
+##### json
+
+ 这是一个双向过滤器
+
+```
+__example__
+
+var component = new Regular({
+  template: "<h2>{user|json}</h2>"
+})
+
+component.$update("user|json", "{'name': 'leeluolee', 'age': 10}")
+
+```
+
+[【DEMO】]()
+
+
+
+
+
+
+
+
+
+<a href="##" id="event"></a>
 
 ### Component.event
 
@@ -477,15 +489,40 @@ Component.event()
 <!-- /t -->
 
 
-<a href="#" name="animation"></a>
+<a href="##" name="animation"></a>
 ### Component.animation
 
-自定义一个动画command
 
-<a href="#" name="component"></a>
+自定义一个动画command. animation接口完全是为`r-animation`指令服务的.
+
+
+__Usage__
+
+Component.animation(name, factory)
+
+
+
+
+
+<a href="##" name="component"></a>
 ### Component.component
 
-注册一个组件，使其可以被,　这里等同于在[options](#options)中声明`name`
+
+注册一个组件，使其可以被,　这里类似与在[options](#options)中声明`name`
+
+
+__Usage__
+
+`Component.component(name, factory)`
+
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|name|String|the name used to insert Component in template|
+|factory| Component | A Component to be register |
+
 
 __Example >__
 
@@ -497,41 +534,16 @@ var Pager = Regular.extend({
 
 Component.component('pager', Pager)
 
-```
-
-
-
-`component`函数比要`name`属性更灵活，因为它可以注册继承于任意组件的
-
-
-
-
-####  directive,events,animation和filter的共性
-
-- 传入Object可以进行多个factory的扩展
-
-```js
-
-Component.directive({
-  "r-directive1": factory1,
-  "r-directive2": factory2
+// you can use pager as nested component
+Component2 = Component.extend({
+  template: "<pager></pager>"
 })
 
 ```
 
--  如果只传入name, 可获取对应的factory .
-
-```js
-Component.filter("format": factory1);
-
-alert(Component.filter("format") === factory1) // -> true
-
-```
 
 
-- 扩展只影响到Component及其子类
 
-[see 封装和模块化 >](#module)
 
 
 
@@ -687,7 +699,7 @@ Regular.parse("<h2>{title}</h2>")
 ```
 
 
-
+<a id="instance"></a>
 ## 实例接口
 
 
@@ -871,56 +883,123 @@ component.$update('b', 100); // only alert 'watcher 1'
 
 ```
 
+<a href="##" id="update"></a>
 ### component.$update
+
+`component.$update` is used to synchronize data and view
+
+
+由于regularjs是基于脏检查，所以当不是由regularjs本身控制的操作(如事件、指令)引起的数据操作，可能需要你手动的去同步data与view的数据.
+$update方法即帮助将你的data同步到view层.
+
 
 __Usage__
 
 `component.$update([expr] [, value])`
 
 
-更新某个值，并强制进入digest阶段，即脏检查. 你可以使用$update对[计算属性](#computed)进行赋值
+更新某个值，并强制进入digest阶段，即脏检查.
 
 
 __Arguments__
 
 
-* expr [Expression| Function | String] - expression可以有多种参数类型
+* expr(Optional) [Expression| Function | String] - expression可以有多种参数类型
   - String: 此字符串会先被Regular.expression处理为Expression
   - Expression: 此expression需要有set函数, [查看Expression](../syntax/expression.md)
-  - Function: , 类似于angular的$apply,  传入expr的参数如下
-    - data: 即组件的数据模型`component.data`
+  - Object: 多重设值
 
-* value - 设置的值，如果expression参数为Function，则被忽略
+* value - 设置的值
+
 
 
 
 
 __Example >__
 
-```javascript
+```js
 
 var component = new Regular({
+  template: "<h2 ref='h2' on-click={title=title.toLowerCase()}>{title}</h2>",
   data: {
-    a: {}
+    title: "REGULARJS"
   }
 });
 
-component.$update('a.b', 2); // component.data.a.b = 2;
+//=> log 'REGULARJS' , with no doubt
+console.log( component.$refs.h2.innerHTML ) 
 
-component.$update('a + b', 1); // !! invalid expression, canot extract set function
+component.data.title = "LEELUOLEE";
 
-component.$update({
-  b: 1,
-  c: 2
-}) // multiply setter
+//=> also log 'REGULARJS', regularjs don't know the value is changed.
+console.log( component.$refs.h2.innerHTML ) //
 
-component.$update(function(data){ // data == component.data
-  data.a.b = 2;
-});
+// force synchronizing data and view 
+component.$update()
 
-component.$update() // do nothing , just enter digest phase
+//=> also 'REGULARJS'. synchronize now.
+console.log( component.$refs.h2.innerHTML ) //
+
+
+// trigger on-click event  
+component.$refs.h2.click();
+
+
+// should log leeluolee.
+// the Expression `title=title.toLowerCase()` is actived.
+// when listener is done, regularjs will enter digest phase
+console.log( component.$refs.h2.innerHTML ) //
 
 ```
+
+you may need check [$refs](#refs) first
+
+
+Beacuse you may need to set a complex Expression, $update also accept optional params to set the property easily, for Example
+
+
+```js
+
+// 1. simple
+component.$update("user.name", 'leeluolee')
+
+// is equals to
+
+component.data.user.name = 'leeluolee'
+component.$update()
+
+
+// 2. multiple
+component.$update({
+  "user.name": "leeluolee",
+  "user.age": 20
+})
+// is equlas to
+component.data.user.name = 'leeluolee'
+component.data.user.age = 20
+component.$update()
+
+
+
+```
+
+ 
+你当然也可以使用更复杂的表达式，不过你必须保证你的表达式是可设值的, 不过由于会创建表达式，这显然是不高效的，作者强烈建议不怎么做，　除非你需要通过[双向过滤器](#two-way-filter)来设值.
+
+
+```js
+
+// JSON.parse the title first.
+component.$update('title|json', "{'title': 1}");
+
+console.log(component.data.title) // => {title:1};
+
+```
+
+
+
+
+
 
 
 
@@ -944,7 +1023,7 @@ __Usage__
 
 
 
-获得一个Expression的值,类似于angular的$eval函数.
+获得一个Expression的值,类似于angular的$eval函数 
 
 
 __Example >__
@@ -957,6 +1036,15 @@ component.$get('username + ":" + job') // => leeluolee:developer
 
 ```
 
+
+__Arguments__
+
+
+|Param|Type|Detail|
+|--|--|--|
+|expression|Expression|String|表达式|
+
+<a id="refs"></a>
 ### component.$refs
 
 - type: Object
@@ -989,6 +1077,37 @@ Register an `event` handler `fn`.
 
 __Usage__
 
+`component.$on(event, fn])`
+
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|eventName| Object String | 事件名|
+|fn| Function |  监听器回调|
+
+
+如果你传入一个Object, 会成为一个多重事件绑定
+
+
+
+
+__Example >__
+
+```js
+component.$on("hello", fn1)
+
+// multiple
+component.$on({
+  notify: fn2,
+  message: fn3
+})
+
+```
+
+
+
 ### component.$off      
 
 __Usage__
@@ -997,9 +1116,17 @@ __Usage__
 
 __Arguments__
 
-- Pass both event and fn to remove a listener.
-- Only Pass event to remove all listeners on that event.
-- Pass nothing to remove all listeners on all events.
+|Param|Type|Detail|
+|--|--|--|
+|eventName| Object String | 事件名|
+|fn| Function |  监听器回调|
+
+
+- 如果同时传入 event和fn,　则移除指定event类型下的fn函数
+- 只传入event, 移除所有event对应的监听器
+- 什么都不传，移除所有
+
+
 
 
 
@@ -1012,80 +1139,47 @@ __Arguments__
 
 __Usage__
 
-`component.$emit(event [, args...])`
-
+`component.$emit(eventName [, args...])`
 
 
 __Arguments__
 
-
-### 组件事件和dom事件
-
-
-Regularjs内置了一个简单Emitter提供了上述的`$on`、`$off`以及`$emit`.
-
-dom事件与emitter事件非常相似
+|Param|Type|Detail|
+|--|--|--|
+|eventName| Object String | 事件名|
+|args| Function |  剩余的参数都会作为参数传入到监听器|
 
 
+__Example >__
 
-- 它们都可以在模板中声明
-
-__example__
-
-```js
-
-var component = new Regular({
-  template: 
-    '<div on-click={this.say()}></div>\
-    <pager on-nav={this.nav($event)}></pager>'
-  say: function(){
-    console.log("trigger by click on element") 
-  },
-  nav: function( page ){
-    console.log("nav to page "+ )
-  }
-})
-
-```
-
-__the `$event` trigger by Emitter is the first param passed to `$emit`__.
-
-[【DEMO】](#)
-
-
-- 它们都可以被代理到其它组件事件中.
-
-__example__
-
-
-```js
-
-var component = new Regular({
-  template: 
-    "<div on-click='save'></div>\
-     <pager on-nav='nav'></pager>"
-  init: function(){
-    this.$on("save", function(){
-      console.log("event delegated from click")
-    })
-    this.$on("nav", function(){
-      console.log("event delegated from pager's 'nav' event")
-    })
-
-  }
-})
-
-```
 ```javascript
+var component = new Regular();
+
+var clickhandler1 = function(arg1){ console.log('clickhandler1:' + arg1)}
+var clickhandler2 = function(arg1){ console.log('clickhandler2:' + arg1)}
+var clickhandler3 = function(arg1){ console.log('clickhandler3:' + arg1)}
+
+component.$on('hello', clickhandler1);
+component.$on('hello', clickhandler2);
+component.$on({ 
+  'other': clickhandler3 
+});
+
+
+component.$emit('hello', 1); // handler1 handler2 trigger
+
+component.$off('hello', clickhandler1) // hello: handler1 removed
+
+component.$emit('hello', 2); // handler1 handler2 trigger
+
+component.$off('hello') // all hello handler removed
+
+component.$off() // all component's handler removed
+
+component.$emit('other');
 
 
 ```
-
-[【DEMO】](#)
-
-
-
-你可以利用这种相似性来方便的将内联组件的事件传递到外层组件
 
 
 
@@ -1220,121 +1314,177 @@ you may want [the source code of pager ](https://rawgit.com/regularjs/regular/ma
 
 Regularjs 提供了一些常用的内置指令
 
+指令只能应用与节点，而不能应用与内嵌组件
+
+
+
 
 ### on-[eventName]
 
+{
+
+}
+
+__Syntax__
+
+`on-click={expression}` or `on-click=delegateName`
+
+@TODO.
+__Arguments__
+
+
+|Param|Type|Detail|
+|--|--|--|
+|expression| Expression |是否disable这个组件(可以后续重启它)|
+
+
+
+During the compile phase, once regularjs's saw `on-*` in template, regularjs handle it as follow
+
+
 ### r-model
 
-### r-html
+very similar to `ng-model` in angular, `r-model` can help you to create two-way binding between data and the form element.
 
-### r-hide
+you can check the [r-model-example](http://jsfiddle.net/leeluolee/4y25j/) on jsfiddle.
+
+* `input、textarea`:
+  simple text binding
+  ```
+  <textarea  r-model='textarea'>hahah</textarea>
+  <input  r-model='input' />
+  ```
+
+
+* `input:checkbox`:
+  binding the input's checked state to a boolean type field
+
+  ```
+  <input type="checkbox" checked  r-model={checked}> Check me out (value: {checked})
+  // checked = true
+  ```
+
+
+* `input:radio`:
+  binding to input.value
+
+  ```html
+  <input type="radio"value="option1" r-model={radio}>
+  ```
+
+
+* `select`:
+  binding to select.value
+
+  ```html
+  <!-- city = 1 -->
+  <select r-model={city}>
+    <option value="1" selected>Hangzhou</option>
+    <option value="2">Ningbo</option>
+    <option value="3">Guangzhou</option>
+  </select>
+
+  ```
+
+
+
+
+### r-style
+
+`r-style` is an enhancement for plain `style` interpolation.
+
+
+__Exmaple__
+
+```js
+var app = new Regular({
+    template:
+      "<button class='btn'\
+        on-click={left=left+10} r-style={ {left: left+'px'} } >\
+        left+10 \
+       </button>\
+      left:  {left}",
+    data: {left:1}
+}).$inject(document.body)
+
+```
+
+
+[【DEMO】](http://jsfiddle.net/leeluolee/aaWQ7)
+
+Description
+
+|Param|Type|Details|
+|---|---|---|
+|r-style | `expression` | `Expression` will eval to an object whose keys are CSS style names and values are corresponding values for those CSS keys.|
+
+
+
+
+> __Warning: if there is already an interpolation on `style`, the `r-style` will be overridden__
+
+> for examle . `<div style='left: {left}px' r-style='{left: left+"px"}'></div>`
 
 ### r-class
 
-### r-style
+simmilar to `r-style`. `r-class` is an enhancement for plain `class` interpolation,
+
+
+__Example__
+
+```html
+<div r-class='{"active": page === "home"}'></div>
+```
+
+in this example, when `page === 'home'` , the `active` will attach to the node`div` , or vice versa.
+
+Description
+
+|Param|Type|Details|
+|---|---|---|
+|r-class | `expression` | `Expression` eval to `Object`: a map of class names to boolean values. In the case of a map, the names of the properties whose values are true will be added as css classes to the element.|
+
+
+
+
+
+> __Warning: just like `r-style`, if there is already an interpolation on `class`, the `r-class` will be overridden__
+
+### r-hide
+
+__Exmaple__
+
+```html
+<div r-hide="page !== 'home'"></div>
+```
+
+if the Expression `page !== 'home'` is evaluated to true, the `display:none` will attach to the `div`.
+
+
+
+
+### r-html
+
+unescaped interpolation use innerHTML. beware of attack like `xss`.
+
+__Example__
+
+```javascript
+<div class='preview' r-html={content}></div>
+```
+
 
 ### r-animation
 
 
 
-
-
-
-## 组件生命周期
+`r-animation` 用来实现声明式的动画，绝对你看到过的所有动画系统中最强大的一个，它可以以声明式的方式来获得动画序列，并且可以达到多节点的联动
 
 
 
 
 
-### when `new Component(options)`
 
-当你实例化组件时，将会发生以下剧情
-
-> 对应的源码来源于[Regularjs.js](https://github.com/regularjs/regular/blob/master/src/Regular.js#L31)
-
-##### 1 options将合并原型中的 [events](#events), [data](#events), [computed](#computed)配置
-
-```js
-options = options || {};
-options.data = options.data || {};
-options.computed = options.computed || {};
-options.events = options.events || {};
-if(this.data) _.extend(options.data, this.data);
-if(this.computed) _.extend(options.computed, this.computed);
-if(this.events) _.extend(options.events, this.events);
-
-```
-
-##### 2 将options合并到this中
-
-由于传入了参数true, 实例化中传入的属性会覆盖原型属性.
-
-```js
-_.extend(this, options, true);
-```
-
-
-##### 3  解析模板
-
-模板本身已经被解析过了(AST)，这步跳过.
-
-```js
-if(typeof template === 'string') this.template = new Parser(template).parse();
-```
-
-##### 4. 根据传入的options.events 注册事件
-
-注册事件，可以让我们无需去实现那些声明周期的方法(init, destory等)
-
-```js
-if(this.events){
-  this.$on(this.events);
-}
-```
-
-##### 5* 调用config函数.
-
- 一般此函数我们会在config中预处理我们传入的数据
-
-```js
-this.config && this.config(this.data);
-```
-
-##### 6* __编译模板__, 触发一次组件脏检查
-
-这里的脏检查是为了确保组件视图正确,　__到这里我们已经拥有初始化的dom元素__, 你可以通过$refs来获取你标记的.
-
-```js
-
-if(template){
-  this.group = this.$compile(this.template, {namespace: options.namespace});
-}
-
-```
-
-##### 7* __触发`$init`事件，　并调用this.init方法. ____
-
-调用init之后我们不会进行自动的脏检查.
-
-```js
-this.$emit("$init");
-if( this.init ) this.init(this.data);
-```
-
-
-
-<!-- /t -->
-
-
-### when `component.destory()`
-
-当销毁组件时，剧情就要简单的多了.
-
-1. 触发`$destroy`事件
-
-2. 销毁所有模板的dom节点,并且解除所有数据绑定、指令等
-
-需要注意的是，是Regular.prototype.destory完成了这些处理,　所以永远记得在你定义的destory函数中使用`this.supr()`. 一个更稳妥的方案是: 永远不重写destroy, 而是注册`$destory`事件来完成你的回收工作.
 
 
 ## 其它
@@ -1349,6 +1499,7 @@ if( this.init ) this.init(this.data);
 
 
 
+<a id="dom-on"></a>
 #### Regular.dom.on(element, event, handle)
 
 

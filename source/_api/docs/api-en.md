@@ -1,5 +1,4 @@
 
-# API Reference
 
 
 [Improve this page >](https://github.com/regularjs/blog/edit/master/source/_api/_docs/api.md)
@@ -8,7 +7,8 @@
 
 ## Static API
 
- __Warn:__ 
+
+__ Naming Convention __
 
 - `Component` means the method belongs to both 'Regular' and its subClass. 
 - `Regular` means the method only belongs to 'Regular' itself.
@@ -19,6 +19,7 @@
 
 
 
+`Component.extend` used to create a SubComponent that inherit from  Component. 
 
 
 __Usage:__
@@ -33,9 +34,8 @@ var Component = Regular.extend({
 
   config: function(){},
   init: function(){},
-
-  changeTitle: function(newTitle){
-    this.data.title = newtiTle;
+  changeTitle: function(title){
+    this.data.title = title;
   }
 })
 
@@ -51,11 +51,8 @@ __Arguments__
 
 __Return__ 
 
-Component[Function]: Component self
+SubComponent[Function]: SubClass inherit from Component 
 
-
-
-<!-- t -->
 
 
 
@@ -76,8 +73,41 @@ __Arguments__
 |--|--|--|
 |options|Object|options for Component. see [__options__](#options)|
 
+__Return__ 
 
-<!-- t -->
+
+Component[Function]: Component self
+
+
+__Tips__
+
+if  extending function by `Component.extend and ` you can use `this.supr()` to invoke the super's function that has the same name.
+%
+
+> "Regular's Class is rewrited from awesome [ded/klass](https://github.com/ded/klass)."
+
+
+
+
+__Example >__
+
+```js
+var SubComponent = Component.extend({
+  init: function(){
+    this.supr() // call the super init
+  }
+})
+
+Component.implement({
+  hello: function( msg ){
+    this.supr( msg ) // call the super hello
+  }
+})
+
+```
+
+
+
 
 
 
@@ -108,7 +138,7 @@ __Arguments__
 
 __Return__
 
-Instance of Component: [see instance api 
+Instance of Component: [see instance api ](#instance)
 
 
 
@@ -119,7 +149,7 @@ options passed during initialize time will become the __instance property__, mea
 
 
 
-<a href="#" name="options"></a>
+<a href="##" name="options"></a>
 ### options *
 
 the options for define a Component. all property we don't 
@@ -184,7 +214,7 @@ component.destory();
 
 
 
-register this Component to its SuperComponent , make it composite in other component inherit from SuperComponent. 
+register this Component to its SuperComponent , make it [composite](?syntax-en#composite) in other component inherit from SuperComponent. 
 
 
 ```js
@@ -212,7 +242,11 @@ var Component = SuperComponent.extend({});
 SuperComponent.component('foo1', Component)
 ```
 
-but method `component` is much powerful than property `name`, because, `component()` can register Component extended from whatever SuperComponent. 
+
+
+but method `component` is much powerful than property `name`, because, `component()` can register Component extended from any SuperComponent. 
+
+
 
 ```js
 
@@ -221,34 +255,6 @@ var Component = Regular.extend({});
 SuperComponent.component('foo1', Component)
 ```
 
-
-#### computed: 
-
-
-- type: Object| Function | String
-
-
-你可以定义计算属性,　来避免在模板中描述复杂的表达式. 具体请参阅[【计算属性】](#)
-
-一个典型的例子: 列表项的全选功能，我们可以利用计算属性来实现此功能.
-
-```js
-Regular.extend({
-  computed: {
-   allCompleted: {
-      get: function( data ){
-        return data.todos.length === this.getList('completed').length
-      },
-      set: function( checked, data ){
-        data.todos.forEach( function(item){
-          item.completed = checked;
-        })
-      }
-    }
-  }
-})
-
-```
 
 #### events
 
@@ -309,17 +315,12 @@ __Usage__
 <!-- t -->
 
 
-
-
 __Arguments__
 
 |Param|Type|Detail|
 |--|--|--|
-|name|String|directive name|
-|factory|Function| Factory function for creating new eventType|
-
-
-
+|name|String|directive name |
+|factory|Function|  Factory function for creating new eventType |
 
 
 
@@ -335,11 +336,12 @@ __Usage__
 
 
 
+regularjs supports the concept of "filters", A "filter chain" is a designer friendly api for manipulating data. 
+
+regularjs also support concept called [__two-way filters__](#two-way-filter) 
 
 
-
-
-<!-- t -->
+you can use `Component.filter()` to register a filter, see <a href="?api-en#filter" target=_blank>API:filter</a> for detail
 
 
 __Arguments__
@@ -397,7 +399,48 @@ output
 
 
 
-<a href="#" name="event"></a>
+<a href="##" id="two-way-fitler"></a>
+#### Two-way filter 
+
+
+Two way filter aim to  help us transform the result when it back to origin data. it is just like filter transform data from origin to result. you can use two-way-fitler to realize some two-way functions. 
+
+
+
+
+#### Builtin Filters 
+
+
+only `json` filter  is native supported by regularjs now.  if you think some filter must be supprted, feel free to [open a issue]().
+
+
+
+##### json
+
+This is a two-way filter 
+
+```
+__example__
+
+var component = new Regular({
+  template: "<h2>{user|json}</h2>"
+})
+
+component.$update("user|json", "{'name': 'leeluolee', 'age': 10}")
+
+```
+
+[【DEMO】]()
+
+
+
+
+
+
+
+
+
+<a href="##" id="event"></a>
 
 ### Component.event
 
@@ -420,15 +463,40 @@ Component.event()
 <!-- /t -->
 
 
-<a href="#" name="animation"></a>
+<a href="##" name="animation"></a>
 ### Component.animation
 
-自定义一个动画command
 
-<a href="#" name="component"></a>
+register a animation command, it is completely designed for directive `r-animation`.
+
+
+__Usage__
+
+Component.animation(name, factory)
+
+
+
+
+
+<a href="##" name="component"></a>
 ### Component.component
 
-注册一个组件，使其可以被,　这里等同于在[options](#options)中声明`name`
+
+resiter a Component, make it nestable in OtherComponent.
+
+
+__Usage__
+
+`Component.component(name, factory)`
+
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|name|String|the name used to insert Component in template|
+|factory| Component | A Component to be register |
+
 
 __Example >__
 
@@ -440,41 +508,16 @@ var Pager = Regular.extend({
 
 Component.component('pager', Pager)
 
-```
-
-
-
-
-
-
-
-
-#### common feature of directive,events,animation and filter
-
-- multi extending 
-
-```js
-
-Component.directive({
-  "r-directive1": factory1,
-  "r-directive2": factory2
+// you can use pager as nested component
+Component2 = Component.extend({
+  template: "<pager></pager>"
 })
 
 ```
 
-- if only pass `name`, it will return the target factory .
-
-```js
-Component.filter("format": factory1);
-
-alert(Component.filter("format") === factory1) // -> true
-
-```
 
 
-- extending is Only affect Component self and its SubClass 
 
-[see modular >](#module)
 
 
 
@@ -619,12 +662,12 @@ Regular.parse("<h2>{title}</h2>")
 ```
 
 
-
+<a id="instance"></a>
 ## instance API 
 
 
 
-if method has prefix `$`, it can't be rewritten. 
+If a method has prefix `$`, you should never rewrite it.
 
 
 
@@ -632,7 +675,7 @@ if method has prefix `$`, it can't be rewritten.
 ### component.$inject
 
 
-Injects, or inserts, the component at a particular place relative to the element.
+Injects, or inserts the component at a particular place relative to the element.
 
 
 
@@ -802,57 +845,120 @@ component.$update('b', 100); // only alert 'watcher 1'
 
 ```
 
+<a href="##" id="update"></a>
 ### component.$update
+
+`component.$update` is used to synchronize data and view
+
+
+
 
 __Usage__
 
 `component.$update([expr] [, value])`
 
 
-do updating operation, and force entering the `digest` phase. you can use $update to update computed's value.
+do updating operation, and force entering the `digest` phase.
 
 
 __Arguments__
 
 
 
-* expr [Expression| Function | String] -
+* expr(Optional) [Expression | String | Object] -
   - Expression: The Expression must be expr, see more in [Expression](../syntax/expression.md)
   - String: String will be passed to Expression
-  - Function expr(data): just like angular's `$apply`, you can batch update-operation in one passed handler
-    - data: equal to component.data
   - Object: multiple setting operation.
-* value - value assigned to the field pointed by the Expression `expr`. if `expr` is a Function, it will be ignored.
+* value - value to be assign, if `expr` is a Object, it will be ignored
 
 
 
 
 __Example >__
 
-```javascript
+```js
 
 var component = new Regular({
+  template: "<h2 ref='h2' on-click={title=title.toLowerCase()}>{title}</h2>",
   data: {
-    a: {}
+    title: "REGULARJS"
   }
 });
 
-component.$update('a.b', 2); // component.data.a.b = 2;
+//=> log 'REGULARJS' , with no doubt
+console.log( component.$refs.h2.innerHTML ) 
 
-component.$update('a + b', 1); // !! invalid expression, canot extract set function
+component.data.title = "LEELUOLEE";
 
-component.$update({
-  b: 1,
-  c: 2
-}) // multiply setter
+//=> also log 'REGULARJS', regularjs don't know the value is changed.
+console.log( component.$refs.h2.innerHTML ) //
 
-component.$update(function(data){ // data == component.data
-  data.a.b = 2;
-});
+// force synchronizing data and view 
+component.$update()
 
-component.$update() // do nothing , just enter digest phase
+//=> also 'REGULARJS'. synchronize now.
+console.log( component.$refs.h2.innerHTML ) //
+
+
+// trigger on-click event  
+component.$refs.h2.click();
+
+
+// should log leeluolee.
+// the Expression `title=title.toLowerCase()` is actived.
+// when listener is done, regularjs will enter digest phase
+console.log( component.$refs.h2.innerHTML ) //
 
 ```
+
+you may need check [$refs](#refs) first
+
+
+Beacuse you may need to set a complex Expression, $update also accept optional params to set the property easily, for Example
+
+
+```js
+
+// 1. simple
+component.$update("user.name", 'leeluolee')
+
+// is equals to
+
+component.data.user.name = 'leeluolee'
+component.$update()
+
+
+// 2. multiple
+component.$update({
+  "user.name": "leeluolee",
+  "user.age": 20
+})
+// is equlas to
+component.data.user.name = 'leeluolee'
+component.data.user.age = 20
+component.$update()
+
+
+
+```
+
+
+you can also use a complex expression. but the expression must be [setable](?syntax-en#setable). but it is not efficient, we are very suggested to avoid doing this. unless you need to set value through two-way fitler. for Example.
+
+
+```js
+
+// JSON.parse the title first.
+component.$update('title|json', "{'title': 1}");
+
+console.log(component.data.title) // => {title:1};
+
+```
+
+
+
+
+
 
 
 
@@ -876,6 +982,7 @@ __Usage__
 
 
 
+get a evaluated value from particluar Expression
 
 
 __Example >__
@@ -888,6 +995,15 @@ component.$get('username + ":" + job') // => leeluolee:developer
 
 ```
 
+
+__Arguments__
+
+
+|Param|Type|Detail|
+|--|--|--|
+|expression|Expression|String|Expression|
+
+<a id="refs"></a>
 ### component.$refs
 
 - type: Object
@@ -920,6 +1036,37 @@ Register an `event` handler `fn`.
 
 __Usage__
 
+`component.$on(event, fn])`
+
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|eventName| Object String | event name|
+|fn| Function | listener |
+
+
+_there will be multiple registering, if you pass a `Object`_
+
+
+
+
+__Example >__
+
+```js
+component.$on("hello", fn1)
+
+// multiple
+component.$on({
+  notify: fn2,
+  message: fn3
+})
+
+```
+
+
+
 ### component.$off      
 
 __Usage__
@@ -928,9 +1075,16 @@ __Usage__
 
 __Arguments__
 
+|Param|Type|Detail|
+|--|--|--|
+|eventName| Object String | event name|
+|fn| Function | listener |
+
+
 - Pass both event and fn to remove a listener.
 - Only Pass event to remove all listeners on that event.
 - Pass nothing to remove all listeners on all events.
+
 
 
 
@@ -943,79 +1097,47 @@ Emit an event with variable option args.
 
 __Usage__
 
-`component.$emit(event [, args...])`
-
+`component.$emit(eventName [, args...])`
 
 
 __Arguments__
 
-
-### component emitter and dom event
-
-
-Regularjs has a simple Emitter implement to provide `$on`、`$off` and `$emit`.
-
-emitter event is very similar with dom event.
+|Param|Type|Detail|
+|--|--|--|
+|eventName| Object String | event name|
+|args| Function | the rest of the params will be passed into the listener |
 
 
+__Example >__
 
-- botn of them can be used in template.
-
-__example__
-
-```js
-
-var component = new Regular({
-  template: 
-    '<div on-click={this.say()}></div>\
-    <pager on-nav={this.nav($event)}></pager>'
-  say: function(){
-    console.log("trigger by click on element") 
-  },
-  nav: function( page ){
-    console.log("nav to page "+ )
-  }
-})
-
-```
-
-__the `$event` trigger by Emitter is the first param passed to `$emit`__.
-
-[【DEMO】](#)
-
-
-- both of them can be redirect to another component event. 
-
-__example__
-
-
-```js
-
-var component = new Regular({
-  template: 
-    "<div on-click='save'></div>\
-     <pager on-nav='nav'></pager>"
-  init: function(){
-    this.$on("save", function(){
-      console.log("event delegated from click")
-    })
-    this.$on("nav", function(){
-      console.log("event delegated from pager's 'nav' event")
-    })
-
-  }
-})
-
-```
 ```javascript
+var component = new Regular();
+
+var clickhandler1 = function(arg1){ console.log('clickhandler1:' + arg1)}
+var clickhandler2 = function(arg1){ console.log('clickhandler2:' + arg1)}
+var clickhandler3 = function(arg1){ console.log('clickhandler3:' + arg1)}
+
+component.$on('hello', clickhandler1);
+component.$on('hello', clickhandler2);
+component.$on({ 
+  'other': clickhandler3 
+});
+
+
+component.$emit('hello', 1); // handler1 handler2 trigger
+
+component.$off('hello', clickhandler1) // hello: handler1 removed
+
+component.$emit('hello', 2); // handler1 handler2 trigger
+
+component.$off('hello') // all hello handler removed
+
+component.$off() // all component's handler removed
+
+component.$emit('other');
 
 
 ```
-
-[【DEMO】](#)
-
-
-
 
 
 
@@ -1146,19 +1268,166 @@ you may want [the source code of pager ](https://rawgit.com/regularjs/regular/ma
 
 
 
+regularjs provide some basic directive
+
+directive only works for element, you can't use directive to nested component.
+
 
 
 ### on-[eventName]
 
+{
+
+}
+
+__Syntax__
+
+`on-click={expression}` or `on-click=delegateName`
+
+@TODO.
+__Arguments__
+
+
+|Param|Type|Detail|
+|--|--|--|
+|expression| Expression |whether to disable this component(you can active it later use $mute(false))|
+
+
+
+During the compile phase, once regularjs's saw `on-*` in template, regularjs handle it as follow
+
+
 ### r-model
 
-### r-html
+very similar to `ng-model` in angular, `r-model` can help you to create two-way binding between data and the form element.
 
-### r-hide
+you can check the [r-model-example](http://jsfiddle.net/leeluolee/4y25j/) on jsfiddle.
+
+* `input、textarea`:
+  simple text binding
+  ```
+  <textarea  r-model='textarea'>hahah</textarea>
+  <input  r-model='input' />
+  ```
+
+
+* `input:checkbox`:
+  binding the input's checked state to a boolean type field
+
+  ```
+  <input type="checkbox" checked  r-model={checked}> Check me out (value: {checked})
+  // checked = true
+  ```
+
+
+* `input:radio`:
+  binding to input.value
+
+  ```html
+  <input type="radio"value="option1" r-model={radio}>
+  ```
+
+
+* `select`:
+  binding to select.value
+
+  ```html
+  <!-- city = 1 -->
+  <select r-model={city}>
+    <option value="1" selected>Hangzhou</option>
+    <option value="2">Ningbo</option>
+    <option value="3">Guangzhou</option>
+  </select>
+
+  ```
+
+
+
+
+### r-style
+
+`r-style` is an enhancement for plain `style` interpolation.
+
+
+__Exmaple__
+
+```js
+var app = new Regular({
+    template:
+      "<button class='btn'\
+        on-click={left=left+10} r-style={ {left: left+'px'} } >\
+        left+10 \
+       </button>\
+      left:  {left}",
+    data: {left:1}
+}).$inject(document.body)
+
+```
+
+
+[【DEMO】](http://jsfiddle.net/leeluolee/aaWQ7)
+
+Description
+
+|Param|Type|Details|
+|---|---|---|
+|r-style | `expression` | `Expression` will eval to an object whose keys are CSS style names and values are corresponding values for those CSS keys.|
+
+
+
+
+> __Warning: if there is already an interpolation on `style`, the `r-style` will be overridden__
+
+> for examle . `<div style='left: {left}px' r-style='{left: left+"px"}'></div>`
 
 ### r-class
 
-### r-style
+simmilar to `r-style`. `r-class` is an enhancement for plain `class` interpolation,
+
+
+__Example__
+
+```html
+<div r-class='{"active": page === "home"}'></div>
+```
+
+in this example, when `page === 'home'` , the `active` will attach to the node`div` , or vice versa.
+
+Description
+
+|Param|Type|Details|
+|---|---|---|
+|r-class | `expression` | `Expression` eval to `Object`: a map of class names to boolean values. In the case of a map, the names of the properties whose values are true will be added as css classes to the element.|
+
+
+
+
+
+> __Warning: just like `r-style`, if there is already an interpolation on `class`, the `r-class` will be overridden__
+
+### r-hide
+
+__Exmaple__
+
+```html
+<div r-hide="page !== 'home'"></div>
+```
+
+if the Expression `page !== 'home'` is evaluated to true, the `display:none` will attach to the `div`.
+
+
+
+
+### r-html
+
+unescaped interpolation use innerHTML. beware of attack like `xss`.
+
+__Example__
+
+```javascript
+<div class='preview' r-html={content}></div>
+```
+
 
 ### r-animation
 
@@ -1167,23 +1436,9 @@ you may want [the source code of pager ](https://rawgit.com/regularjs/regular/ma
 
 
 
-## LifeCycle
 
 
 
-<!-- t -->
-
-
-
-### when `component.destory()`
-
-当销毁组件时，剧情就要简单的多了.
-
-1. 触发`$destroy`事件
-
-2. 销毁所有模板的dom节点,并且解除所有数据绑定、指令等
-
-需要注意的是，是Regular.prototype.destory完成了这些处理,　所以永远记得在你定义的destory函数中使用`this.supr()`. 一个更稳妥的方案是: 永远不重写destroy, 而是注册`$destory`事件来完成你的回收工作.
 
 
 ## Other
@@ -1197,6 +1452,7 @@ Regularjs implement some cross-platform method for internal implementation needs
 
 
 
+<a id="dom-on"></a>
 #### Regular.dom.on(element, event, handle)
 
 

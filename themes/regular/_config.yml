@@ -1,6 +1,7 @@
 menu:
   Example: /example/markdown.html
   Guide: /guide
+  Reference: /api/
   Blog: /blog/
   Github: https://github.com/regularjs/regular
 

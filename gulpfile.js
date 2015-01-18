@@ -44,10 +44,12 @@ gulp.task('doc:split', function(){
 gulp.task("api", ["doc"], function(){
   gulp.src(['./source/_api/**/*'])
   .pipe(gulp.dest("./public/api"))
+  .pipe(gulp.dest("./.deploy/api"))
 })
 
 gulp.task('generate', shell.task(['hexo generate']))
 
+gulp.task('server', ["watch"], shell.task(['cd public && puer --no-reload']))
 
 gulp.task("doc", ["doc:split"])
 

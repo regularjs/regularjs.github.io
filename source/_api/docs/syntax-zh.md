@@ -16,14 +16,18 @@
 
 
 
-rgl模板几乎完整的按ES5的规范实现了表达式,由于全面的　表达式的支持，rgl事实上是一个富逻辑的模板，这个是动态模板的天然要求.
+rgl模板几乎完整的按ES5的规范实现了表达式, 你可以几乎按以往js的经验来使用你的表达式，这点你在其它数据驱动的框架如vuejs或avalon中是享受不到的，
+当然并不是说必须要在模板里去声明复杂的表达式，只是提供了可能性.
 
 举个例子，下列表达式在regularjs中都是合法的:
 
+<!-- /t -->
+
 - 100 + 'b'.
-- 'a' + 'b'
 - user? 'login': 'logout'
-- login && items[index][this.nav(item.index)].method1()
+- title = title + '1'
+- !isLogin && this.login()
+- items[index][this.nav(item.index)].method1()
 
 
 不过你仍然要注意几个要点
@@ -33,7 +37,8 @@ rgl模板几乎完整的按ES5的规范实现了表达式,由于全面的　表�
 3. rgl不支持自增、自减(`++`,`--`)以及位操作符`&` `|`等
 4. rgl不支持正则表达式的字面量
 5. rgl开放了部分JS内建供使用:
-<!-- /t -->
+
+
   - Array Date JSON Math NaN RegExp Object String
   - decodeURI decodeURIComponent encodeURI encodeURIComponent 
   - parseFloat parseInt 
@@ -106,16 +111,8 @@ alert(i === 1);
 
 
 
-
+<a id="filter"></a>
 ###过滤器Filter
-
-
-regularjs 当然也支持模板中普遍存在于模板中的过滤器，过滤器支持链式的多重调用.
-
-其中过滤器本身通过`Component.filter()` 注册, 可在<a href="?api-zh#filter" target=_blank>API文档</a>进行查看.
-
-
-
 
 __syntax__
 
@@ -123,7 +120,7 @@ __syntax__
 
 
 
-```
+```js
 //Add filte
 
 Regular.filter( "last" , function(obj) {
@@ -136,7 +133,7 @@ Regular.filter( "lowercase" , function(obj) {
 ```
 
 
-```
+```html
 // Template 
 
 <div>{list|last|lowercase}</div>
@@ -144,17 +141,14 @@ Regular.filter( "lowercase" , function(obj) {
 
 with data `{list: ['Add','Update','Delete']}`, output:
 
-```
+```html
 // output
 <div>delete</div>
 ```
 
 
-__Builtin Filters__
 
-
-目前没有内置filter,　如果需要请开一个issue 来描述你的需求, 目前作者没有想到必须支持的过滤器. 而dateformat等常用的，往往需要引入较大的代码量.
-
+__查看 [Component.filter](?api-zh#filter) 了解更多__
 
 
 
@@ -163,7 +157,7 @@ __Builtin Filters__
 ###Range
 
 
-regularjs 支持一种常见的表达式元素: Range. 它是一种数据的简写形式.
+regularjs 支持一种常见的表达式元素: Range. 它是一种数组的简写形式.
 
 
 
@@ -239,7 +233,7 @@ __Syntax__
 
 
 
-对于文本插值, regularjs会创建一个textNode, 并建立与表达式的单向数据绑定.
+对于文本插值, regularjs会创建一个textNode, 并建立与表达式的__单向数据绑定__.
 
 
 __Example__
@@ -271,7 +265,7 @@ app.$inject('#app');
 
 
 
-1. 具有插值`{}`,字符串会生成一个组合表达式，求值结果是这个字符串拼接后的计算值.如`.modal-{klass} z-{state}` 就相当于是 `'.modal-' + klass + 'z-' + state`
+1. 如果属性是一个字符串，不过它内部具有插值符号`{}`,字符串会生成一个组合表达式，求值结果是这个字符串拼接后的计算值.如`.modal-{klass} z-{state}` 就相当于是 `'.modal-' + klass + 'z-' + state`
 
 2. 对于非指令类的的属性, regularjs会在绑定的值发生变化时, 修改对应属性, 即一般属性(`class`, `style`等)是天生可插值的.
 
@@ -299,7 +293,7 @@ __Example__
 
 the example above.
 
-1. `r-model`: directive
+1. `r-model`: directive, see [builtin](?api-en#builtin)
 2. `style`: string-interpolation
 3. `class`: simple attribute interpolation
 4. `type`: just normal attribute
@@ -307,8 +301,7 @@ the example above.
 
 
 
-
-<a href="#" name="composite"></a>
+<a href="#" id="composite"></a>
 
 ##内嵌组件
 
@@ -360,7 +353,7 @@ the example above.
   ```
 
   
-  就相当于是(参数请查看[API:options](?api-zh#options))
+  就相当于是手动调用组件(参数请查看[API:options](?api-zh#options))
   
   
 
