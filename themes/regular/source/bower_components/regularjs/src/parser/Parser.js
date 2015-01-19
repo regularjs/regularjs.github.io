@@ -1,4 +1,6 @@
 var _ = require("../util.js");
+
+var config = require("../config.js");
 var node = require("./node.js");
 var Lexer = require("./Lexer.js");
 var varName = _.varName;
@@ -15,6 +17,7 @@ function Parser(input, opts){
   this.input = input;
   this.tokens = new Lexer(input, opts).lex();
   this.pos = 0;
+  this.noComputed =  opts.noComputed;
   this.length = this.tokens.length;
 }
 
@@ -189,14 +192,15 @@ op.attvalue = function(){
     case "STRING":
       this.next();
       var value = ll.value;
-      if(~value.indexOf('{{')){
+      if(~value.indexOf(config.BEGIN) && ~value.indexOf(config.END)){
         var constant = true;
         var parsed = new Parser(value, { mode: 2 }).parse();
         if(parsed.length === 1 && parsed[0].type === 'expression') return parsed[0];
         var body = [];
         parsed.forEach(function(item){
           if(!item.constant) constant=false;
-          body.push(item.body || "'" + item.text + "'");
+          // silent the mutiple inteplation
+            body.push(item.body || "'" + item.text + "'");        
         });
         body = "[" + body.join(",") + "].join('')";
         value = node.expression(body, null, constant);
@@ -295,7 +299,7 @@ op.list = function(){
       container.push(this.statement());
     }
   }
-  if(ll.value !== 'list') this.error('expect ' + '{{/list}} got ' + '{{/' + ll.value + '}}', ll.pos );
+  if(ll.value !== 'list') this.error('expect ' + 'list got ' + '/' + ll.value + ' ', ll.pos );
   return node.list(sequence, variable, consequent, alternate);
 }
 
@@ -328,23 +332,40 @@ op.expr = function(){
 op.filter = function(){
   var left = this.assign();
   var ll = this.eat('|');
-  var buffer, attr;
-  if(ll){
-    buffer = [
-      "(function(){", 
-          "var ", attr = "_f_", "=", left.get, ";"]
-    do{
+  var buffer = [], setBuffer, prefix,
+    attr = "_t_", 
+    set = left.set, get, 
+    tmp = "";
 
-      buffer.push(attr + " = "+ctxName+"._f('" + this.match('IDENT').value+ "')(" + attr) ;
+  if(ll){
+    if(set) setBuffer = [];
+
+    prefix = "(function(" + attr + "){";
+
+    do{
+      tmp = attr + " = " + ctxName + "._f_('" + this.match('IDENT').value+ "' ).get.call( "+_.ctxName +"," + attr ;
       if(this.eat(':')){
-        buffer.push(", "+ this.arguments("|").join(",") + ");")
+        tmp +=", "+ this.arguments("|").join(",") + ");"
       }else{
-        buffer.push(');');
+        tmp += ');'
       }
+      buffer.push(tmp);
+      setBuffer && setBuffer.unshift( tmp.replace(" ).get.call", " ).set.call") );
 
     }while(ll = this.eat('|'));
-    buffer.push("return " + attr + "})()");
-    return this.getset(buffer.join(""));
+    buffer.push("return " + attr );
+    setBuffer && setBuffer.push("return " + attr);
+
+    get =  prefix + buffer.join("") + "})("+left.get+")";
+    // we call back to value.
+    if(setBuffer){
+      // change _ss__(name, _p_) to _s__(name, filterFn(_p_));
+      set = set.replace(_.setName, 
+        prefix + setBuffer.join("") + "})("+　_.setName　+")" );
+
+    }
+    // the set function is depend on the filter definition. if it have set method, the set will work
+    return this.getset(get, set);
   }
   return left;
 }
@@ -355,7 +376,8 @@ op.assign = function(){
   var left = this.condition(), ll;
   if(ll = this.eat(['=', '+=', '-=', '*=', '/=', '%='])){
     if(!left.set) this.error('invalid lefthand expression in assignment expression');
-    return this.getset('(' + left.get + ll.type  + this.condition().get + ')', left.set);
+    return this.getset( left.set.replace("_p_", this.condition().get).replace("'='", "'"+ll.type+"'"), left.set);
+    // return this.getset('(' + left.get + ll.type  + this.condition().get + ')', left.set);
   }
   return left;
 }
@@ -483,22 +505,20 @@ op.unary = function(){
 // member [ expression ]
 // member . ident  
 
-op.member = function(base, last, pathes){
+op.member = function(base, last, pathes, prevBase){
   var ll, path;
 
+
+  var onlySimpleAccessor = false;
   if(!base){ //first
     path = this.primary();
     var type = typeof path;
-    if(type === 'string'){ // no keyword ident
+    if(type === 'string'){ 
       pathes = [];
-      if(path === '$self'){ // $self.1
-        pathes.push('*');
-        base = varName;
-      }else{ // keypath **
-        pathes.push(path);
-        last = path;
-        base = varName + "['" + path + "']";
-      }
+      pathes.push( path );
+      last = path;
+      base = ctxName + "._sg_('" + path + "', " + varName + ", 1)";
+      onlySimpleAccessor = true;
     }else{ //Primative Type
       if(path.get === 'this'){
         base = ctxName;
@@ -507,7 +527,6 @@ op.member = function(base, last, pathes){
         pathes = null;
         base = path.get;
       }
-      
     }
   }else{ // not first enter
     if(typeof last === 'string' && isPath( last) ){ // is valid path
@@ -522,14 +541,26 @@ op.member = function(base, last, pathes){
       case '.':
           // member(object, property, computed)
         var tmpName = this.match('IDENT').value;
+        prevBase = base;
+        if( this.la() !== "(" ){ 
+          base = ctxName + "._sg_('" + tmpName + "', " + base + ")";
+        }else{
           base += "['" + tmpName + "']";
-        return this.member( base, tmpName, pathes );
+        }
+        return this.member( base, tmpName, pathes,  prevBase);
       case '[':
           // member(object, property, computed)
         path = this.assign();
-        base += "[" + path.get + "]";
+        prevBase = base;
+        if( this.la() !== "(" ){ 
+        // means function call, we need throw undefined error when call function
+        // and confirm that the function call wont lose its context
+          base = ctxName + "._sg_(" + path.get + ", " + base + ")";
+        }else{
+          base += "[" + path.get + "]";
+        }
         this.match(']')
-        return this.member(base, path, pathes);
+        return this.member(base, path, pathes, prevBase);
       case '(':
         // call(callee, args)
         var args = this.arguments().join(',');
@@ -538,9 +569,16 @@ op.member = function(base, last, pathes){
         return this.member(base, null, pathes);
     }
   }
-  if(pathes && pathes.length) this.depend.push(pathes);
+  if( pathes && pathes.length ) this.depend.push( pathes );
   var res =  {get: base};
-  if(last) res.set = base + '=' + _.setName;
+  if(last){
+    res.set = ctxName + "._ss_(" + 
+        (last.get? last.get : "'"+ last + "'") + 
+        ","+ _.setName + ","+ 
+        (prevBase?prevBase:_.varName) + 
+        ", '=', "+ ( onlySimpleAccessor? 1 : 0 ) + ")";
+  
+  }
   return res;
 }
 
@@ -624,12 +662,17 @@ op.object = function(){
 // [ assign[,assign]*]
 op.array = function(){
   var code = [this.match('[').type], item;
-  while(item = this.assign()){
-    code.push(item.get);
-    if(this.eat(',')) code.push(",");
-    else break;
+  if( this.eat("]") ){
+
+     code.push("]");
+  } else {
+    while(item = this.assign()){
+      code.push(item.get);
+      if(this.eat(',')) code.push(",");
+      else break;
+    }
+    code.push(this.match(']').type);
   }
-  code.push(this.match(']').type);
   return {get: code.join("")};
 }
 

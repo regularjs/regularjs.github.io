@@ -8,11 +8,18 @@ var combine = require('./helper/combine.js');
 var walkers = module.exports = {};
 
 walkers.list = function(ast){
-  var placeholder = document.createComment("Regular list");
+
+  var Regular = walkers.Regular;  
+  var placeholder = document.createComment("Regular list"),
+    namespace = this.__ns__;
   // proxy Component to implement list item, so the behaviar is similar with angular;
   var Section =  Regular.extend( { 
-    template: ast.body, 
-    $context: this.$context
+    template: ast.body,
+    $context: this.$context,
+    // proxy the event to $context
+    $on: this.$context.$on.bind(this.$context),
+    $off: this.$context.$off.bind(this.$context),
+    $emit: this.$context.$emit.bind(this.$context)
   });
   Regular._inheritConfig(Section, this.constructor);
 
@@ -27,6 +34,7 @@ walkers.list = function(ast){
 
 
   function update(newValue, splices){
+    newValue = newValue || [];
     if(!splices || !splices.length) return;
     var cur = placeholder;
     var m = 0, len = newValue.length,
@@ -52,8 +60,7 @@ walkers.list = function(ast){
         data[indexName] = o;
         data[variable] = item;
 
-        var section = new Section({data: data, $parent: self });
-
+        var section = new Section({data: data, $parent: self , namespace: namespace});
 
         // autolink
         var insert =  combine.last(group.get(o));
@@ -76,14 +83,15 @@ walkers.list = function(ast){
     }
   }
 
-  var watchid = this.$watch(ast.sequence, update);
+  this.$watch(ast.sequence, update, { init: true });
   return group;
 }
 
+// {#include }
 walkers.template = function(ast){
   var content = ast.content, compiled;
-  var placeholder = document.createComment('template');
-  var compiled;
+  var placeholder = document.createComment('inlcude');
+  var compiled, namespace = this.__ns__;
   // var fragment = dom.fragment();
   // fragment.appendChild(placeholder);
   var group = new Group();
@@ -95,9 +103,10 @@ walkers.template = function(ast){
         compiled.destroy(true); 
         group.children.pop();
       }
-      
-      group.push( compiled =  self.$compile(value, {record: true}) ); 
+      group.push( compiled =  self.$compile(value, {record: true, namespace: namespace}) ); 
       if(placeholder.parentNode) animate.inject(combine.node(compiled), placeholder, 'before')
+    }, {
+      init: true
     });
   }
   return group;
@@ -132,7 +141,7 @@ walkers['if'] = function(ast, options){
   var placeholder = document.createComment("Regular if" + ii++);
   var group = new Group();
   group.push(placeholder);
-  var preValue = null;
+  var preValue = null, namespace= this.__ns__;
 
 
   var update = function (nvalue, old){
@@ -145,7 +154,7 @@ walkers['if'] = function(ast, options){
     }
     if(value){ //true
       if(ast.consequent && ast.consequent.length){
-        consequent = self.$compile( ast.consequent , {record:true})
+        consequent = self.$compile( ast.consequent , {record:true, namespace: namespace })
         // placeholder.parentNode && placeholder.parentNode.insertBefore( node, placeholder );
         group.push(consequent);
         if(placeholder.parentNode){
@@ -154,7 +163,7 @@ walkers['if'] = function(ast, options){
       }
     }else{ //false
       if(ast.alternate && ast.alternate.length){
-        alternate = self.$compile(ast.alternate, {record:true});
+        alternate = self.$compile(ast.alternate, {record:true, namespace: namespace});
         group.push(alternate);
         if(placeholder.parentNode){
           animate.inject(combine.node(alternate), placeholder, 'before');
@@ -162,7 +171,7 @@ walkers['if'] = function(ast, options){
       }
     }
   }
-  this.$watch(ast.test, update, {force: true});
+  this.$watch(ast.test, update, {force: true, init: true});
 
   return group;
 }
@@ -171,29 +180,36 @@ walkers['if'] = function(ast, options){
 walkers.expression = function(ast){
   var node = document.createTextNode("");
   this.$watch(ast, function(newval){
-    dom.text(node, "" + (newval == null? "": String(newval)));
+    dom.text(node, "" + (newval == null? "": "" + newval) );
   })
   return node;
 }
 walkers.text = function(ast){
-  var node = document.createTextNode(ast.text);
+  var node = document.createTextNode(_.convertEntity(ast.text));
   return node;
 }
 
 
+
 var eventReg = /^on-(.+)$/
 
+/**
+ * walkers element (contains component)
+ */
 walkers.element = function(ast){
   var attrs = ast.attrs, 
     component, self = this,
     Constructor=this.constructor,
     children = ast.children,
+    namespace = this.__ns__, ref, group, 
     Component = Constructor.component(ast.tag);
 
 
+  if(ast.tag === 'svg') var namespace = "svg";
+
 
   if(children && children.length){
-    var group = this.$compile(children);
+    group = this.$compile(children, {namespace: namespace });
   }
 
 
@@ -214,11 +230,19 @@ walkers.element = function(ast){
 
       if(value.type !== 'expression'){
         data[attr.name] = value;
+      }else{
+        data[attr.name] = value.get(self); 
       }
+      if( attr.name === 'ref'  && value != null){
+        ref = value.type === 'expression'? value.get(self): value;
+      }
+
     }
 
-    if(ast.children) var $body = this.$compile(ast.children);
-    var component = new Component({data: data, events: events, $body: $body, $parent: this});
+    var $body;
+    if(ast.children) $body = ast.children;
+    var component = new Component({data: data, events: events, $body: $body, $parent: this, namespace: namespace});
+    if(ref &&  self.$context.$refs) self.$context.$refs[ref] = component;
     for(var i = 0, len = attrs.length; i < len; i++){
       var attr = attrs[i];
       var value = attr.value||"";
@@ -227,31 +251,45 @@ walkers.element = function(ast){
         if(value.set) component.$watch(attr.name, self.$update.bind(self, value))
       }
     }
+    if(ref){
+      component.$on('destroy', function(){
+        if(self.$context.$refs) self.$context.$refs[ref] = null;
+      })
+    }
     return component;
-  }else if(ast.tag === 'r-content' && this.$body){
+  }
+  else if(ast.tag === 'r-content' && this.$body){
     return this.$body;
   }
 
-  if(ast.tag === 'svg') this._ns_ = 'svg';
-  var element = dom.create(ast.tag, this._ns_, attrs);
+  var element = dom.create(ast.tag, namespace, attrs);
   // context element
 
   var child;
 
+  if(group && !_.isVoidTag(ast.tag)){
+    dom.inject( combine.node(group) , element)
+  }
+
+  // sort before
+  attrs.sort(function(a1, a2){
+    var d1 = Constructor.directive(a1.name),
+      d2 = Constructor.directive(a2.name);
+    if(d1 && d2) return (d2.priority || 1) - (d1.priority || 1);
+    if(d1) return 1;
+    if(d2) return -1;
+    if(a2.name === "type") return 1;
+    return -1;
+  })
   // may distinct with if else
   var destroies = walkAttributes.call(this, attrs, element, destroies);
 
-  if(ast.tag === 'svg') this._ns_ = null;
 
 
   var res  = {
     type: "element",
     group: group,
     node: function(){
-      if(!res.init && group && !_.isVoidTag(ast.tag)){
-        animate.inject( combine.node(group) , element)
-        res.init = true;
-      }
       return element;
     },
     last: function(){
@@ -260,7 +298,10 @@ walkers.element = function(ast){
     destroy: function(first){
       if( first ){
         animate.remove( element, group? group.destroy.bind( group ): _.noop );
+      }else if(group) {
+        group.destroy();
       }
+      // destroy ref
       if( destroies.length ) {
         destroies.forEach(function( destroy ){
           if( destroy ){
@@ -280,7 +321,7 @@ walkers.element = function(ast){
 function walkAttributes(attrs, element){
   var bindings = []
   for(var i = 0, len = attrs.length; i < len; i++){
-    var binding = this._walk(attrs[i], {element: element, fromElement: true})
+    var binding = this._walk(attrs[i], {element: element, fromElement: true, attrs: attrs})
     if(binding) bindings.push(binding);
   }
   return bindings;
@@ -298,14 +339,27 @@ walkers.attribute = function(ast ,options){
 
 
   if(directive && directive.link){
-    var binding = directive.link.call(self, element, value, name);
+    var binding = directive.link.call(self, element, value, name, options.attrs);
     if(typeof binding === 'function') binding = {destroy: binding}; 
     return binding;
   }else{
-    if(value.type == 'expression' ){
+    if( name === 'ref'  && value != null && options.fromElement){
+      var ref = value.type === 'expression'? value.get(self): value;
+      var refs = this.$context.$refs;
+      if(refs){
+        refs[ref] = element
+        return {
+          destroy: function(){
+            refs[ref] = null;
+          }
+        }
+      }
+    }
+    if(value.type === 'expression' ){
+
       this.$watch(value, function(nvalue, old){
         dom.attr(element, name, nvalue);
-      });
+      }, {init: true});
     }else{
       if(_.isBooleanAttr(name)){
         dom.attr(element, name, true);
@@ -324,26 +378,3 @@ walkers.attribute = function(ast ,options){
 
 }
 
-// walkers.attributes = function(array, parent){
-//   if(parent.type === 'if'){
-
-//   }
-//   // make the directive after attribute
-//   attrs.sort(function(a, b){
-//     var da = Constructor.directive(a.name);
-//     var db = Constructor.directive(b.name);
-
-//     if(!db) return !da? 0: 1;
-//     if(!da) return -1;
-//     return ( b.priority || 1 ) - ( a.priority || 1 );
-//   })
-
-//   var node = document.createTextNode(ast.text);
-//   return node;
-// }
-
-// dada
-
-// function bindAttrWatcher(element, attr, destroies){
-  
-// }

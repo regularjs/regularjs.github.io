@@ -33,10 +33,13 @@ function process( what, o, supro ) {
   }
 }
 
+// if the property is ["events", "data", "computed"] , we should merge them
+var merged = ["events", "data", "computed"], mlen = merged.length;
 module.exports = function extend(o){
   o = o || {};
   var supr = this, proto,
     supro = supr && supr.prototype || {};
+
   if(typeof o === 'function'){
     proto = o.prototype;
     o.implement = implement;
@@ -51,15 +54,26 @@ module.exports = function extend(o){
   proto = _.createProto(fn, supro);
 
   function implement(o){
+    // we need merge the merged property
+    var len = mlen;
+    for(;len--;){
+      var prop = merged[len];
+      if(o.hasOwnProperty(prop) && proto.hasOwnProperty(prop)){
+        _.extend(proto[prop], o[prop], true) 
+        delete o[prop];
+      }
+    }
+
+
     process(proto, o, supro); 
     return this;
   }
 
 
-  if(supr.__after__) supr.__after__.call(fn, supr, o);
 
   fn.implement = implement
   fn.implement(o)
+  if(supr.__after__) supr.__after__.call(fn, supr, o);
   fn.extend = extend;
   return fn;
 }

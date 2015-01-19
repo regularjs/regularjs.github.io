@@ -2,20 +2,20 @@
 <%- page.content %>
 <script id="example" type="text/regularjs">
 <div class="m-todo">
-{{#if !username}}
-  Friend, please <a href='#' on-click={{this.login()}}>Login</a>
-{{#else}}
-  Welcome, {{username}} <a href='javascript:;' on-click={{username = ''}}>Logout</a>
-  <input on-enter={{this.add(draft)}} r-model={{draft}}/>
+{#if !username}
+  Friend, please <a href='#' on-click={this.login()}>Login</a>
+{#else}
+  Welcome, {username} <a href='javascript:;' on-click={username = ''}>Logout</a>
+  <input on-enter={this.add(draft)} r-model={draft}/>
   <ul class='list'>
-    <h3>you have {{todos.length}} todos </h3>
-    {{#list todos as todo}}
-      <li class={{todo.compeleted? 'compeleted': ''}}>
-        {{todo.content}} <a href='#' on-click={{this.remove(todo_index)}}>X</a> 
+    <h3>you have {todos.length} todos </h3>
+    {#list todos as todo}
+      <li class={todo.compeleted? 'compeleted': ''}>
+        {todo.content} <a href='#' on-click={this.remove(todo_index)}>X</a> 
       </li>
-    {{/list}}
+    {/list}
   </ul>
-{{/if}}
+{/if}
 </div>
 </script>
 

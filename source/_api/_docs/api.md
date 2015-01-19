@@ -1633,6 +1633,19 @@ Regularjs implement some cross-platform method for internal implementation needs
 
 }
 
+<a id="dom-inject"></a>
+#### Regular.dom.inject(element, refer, direction)
+
+`component.$inject` is based on this method
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|element|`Node` `false` | {element be injected%要被插入的节点}|
+|refer|`Node` `false` | {reference element%参考阶段}|
+|direction_(optional default:'bottom')_|String| {The place to inject this component. Can be%组件的位置插入目标的位置.　可以是} 'top', 'bottom', 'after', or 'before'.|
+
 
 <a id="dom-on"></a>
 #### Regular.dom.on(element, event, handle)

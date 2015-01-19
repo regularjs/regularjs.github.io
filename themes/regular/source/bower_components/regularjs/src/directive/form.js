@@ -41,7 +41,7 @@ function initSelect( elem, parsed){
     if(inProgress) return;
     var children = _.slice(elem.getElementsByTagName('option'))
     children.forEach(function(node, index){
-      if(node.value === newValue){
+      if(node.value == newValue){
         elem.selectedIndex = index;
       }
     })
@@ -53,12 +53,12 @@ function initSelect( elem, parsed){
     self.$update();
     inProgress = false;
   }
+
   dom.on(elem, "change", handler);
-  this.$on('init', function(){
-    if(parsed.get(self) === undefined){
-       parsed.set(self, elem.value);
-    }
-  });
+  
+  if(parsed.get(self) === undefined && elem.value){
+     parsed.set(self, elem.value);
+  }
   return function destroy(){
     dom.off(elem, "change", handler);
   }
@@ -69,7 +69,7 @@ function initSelect( elem, parsed){
 function initText(elem, parsed){
   var inProgress = false;
   var self = this;
-  this.$watch(parsed, function(newValue, oldValue){
+  this.$watch(parsed, function(newValue){
     if(inProgress){ return; }
     if(elem.value !== newValue) elem.value = newValue == null? "": "" + newValue;
   });
@@ -101,11 +101,9 @@ function initText(elem, parsed){
     dom.on(elem, "cut", handler)
     dom.on(elem, "change", handler)
   }
-  this.$on('init', function(){
-    if(parsed.get(self) === undefined){
-       parsed.set(self, elem.value);
-    }
-  })
+  if(parsed.get(self) === undefined && elem.value){
+     parsed.set(self, elem.value);
+  }
   return function destroy(){
     if(dom.msie !== 9 && "oninput" in dom.tNode ){
       elem.removeEventListener("input", handler );
@@ -124,12 +122,12 @@ function initText(elem, parsed){
 function initCheckBox(elem, parsed){
   var inProgress = false;
   var self = this;
-  this.$watch(parsed, function(newValue, oldValue){
+  this.$watch(parsed, function(newValue){
     if(inProgress) return;
     dom.attr(elem, 'checked', !!newValue);
   });
 
-  var handler = function handler(ev){
+  var handler = function handler(){
     var value = this.checked;
     parsed.set(self, value);
     inProgress= true;
@@ -137,12 +135,10 @@ function initCheckBox(elem, parsed){
     inProgress = false;
   }
   if(parsed.set) dom.on(elem, "change", handler)
-  this.$on('init', function(){
 
-    if(parsed.get(self) === undefined){
-      parsed.set(self, elem.checked);
-    }
-  });
+  if(parsed.get(self) === undefined){
+    parsed.set(self, !!elem.checked);
+  }
 
   return function destroy(){
     if(parsed.set) dom.off(elem, "change", handler)
@@ -155,13 +151,14 @@ function initCheckBox(elem, parsed){
 function initRadio(elem, parsed){
   var self = this;
   var inProgress = false;
-  this.$watch(parsed, function(newValue, oldValue){
+  this.$watch(parsed, function( newValue ){
     if(inProgress) return;
-    if(newValue === elem.value) elem.checked = true;
+    if(newValue == elem.value) elem.checked = true;
+    else elem.checked = false;
   });
 
 
-  var handler = function handler(ev){
+  var handler = function handler(){
     var value = this.value;
     parsed.set(self, value);
     inProgress= true;
@@ -170,11 +167,9 @@ function initRadio(elem, parsed){
   }
   if(parsed.set) dom.on(elem, "change", handler)
   // beacuse only after compile(init), the dom structrue is exsit. 
-  this.$on('init', function(){
-    if(parsed.get(self) === undefined){
-      if(elem.checked) parsed.set(self, elem.value);
-    }
-  });
+  if(parsed.get(self) === undefined){
+    if(elem.checked) parsed.set(self, elem.value);
+  }
 
   return function destroy(){
     if(parsed.set) dom.off(elem, "change", handler)

@@ -1,10 +1,65 @@
 [{Improve this page%完善此页} >](https://github.com/regularjs/blog/edit/master/source/_api/_docs/api.md)
 
 
-# Guide
+# Tips
+
+{
+This page serves some content that not included by [api](?api-en) and [syntax](?syntax-en), but they all important.
+%
+这个页面主要是一些无法放到[api](?api-zh) and [syntax](?syntax-zh)但是又非常重要的概念
+}
 
 <a id="digest"></a>
-## {Dirty-check in regularjs % regularjs中的脏检查}
+## {dirty-check: the secret of data-binding % 脏检查: 数据绑定的秘密}
+
+事实上，regularjs的数据绑定实现非常接近于angularjs: 都是基于脏检查. 
+
+### {Digest phase % Digest阶段}
+{
+
+%
+
+这里要提到内部的一个非常重要的阶段——digest阶段,  每当进入digest阶段, regularjs会处理以下步骤:
+
+1. 标记dirty = false;
+2. 遍历所有通过`component.$watch`绑定的数据观察者, 对比它们当前求值(基于你传入的表达式)与之前的值, 如果值发生改变, 运行绑定的监听器(可能会有一些view的操作).
+任何一个观察者发生改变, 都会导致`dirty=true`.
+3. 如果dirty===true, 我们重新进入步骤1. 否则进入步骤4.
+4. 完成脏检查
+
+### 为什么使用脏检查
+
+1. 脏检查完全不关心你改变数据的方式, 而常规的set, get的方式则会强加许多限制
+2. 脏检查可以实现批处理完数据之后，再去统一更新view.
+3. 脏检查可以实现任意复杂度的表达式支持.
+
+正因为如此，你可能需要手动进入digest阶段去同步的数据与视图. 值得庆幸的是，大部分内建特性都会自动进入digest阶段.比如事件、timeout模块等等. 
+
+}
+
+```
+<div on-click={this.add()}></div>
+```
+
+{
+
+%
+对于在regularjs控制范围之外的情形你需要通过[component.$update](?api-zh#update)手动进入digest.
+}
+
+
+__Example__
+
+```js
+var component = new Regular();
+
+component.data.name = 'leeluolee'
+
+// you need call $update to Synchronize data and view 
+component.$update(); 
+
+
+```
 
 ## {Consistent event system%一致的事件系统}
 
@@ -14,36 +69,36 @@ Regularjs has a simple Emitter implement that providing `$on`、`$off` and `$emi
 event by emitter and dom event use the same process. so, they have a lot in common. 
 
 %
-Regularjs内置了一个简单Emitter提供了上述的`$on`、`$off`以及`$emit`.
+Regularjs内置了一个简单Emitter提供了组件的实例方法:`$on`、`$off`以及`$emit`.
 
-在模板中声明使用事件时，dom事件与emitter事件非常相似, 因为它们在内部引用的是一套流程，区别仅仅是触发手段不同.
+在模板中声明使用事件时，dom事件与组件事件非常相似, 因为它们在内部引用的是一套流程，区别仅仅是触发手段不同.
 
 }
 
-__Similarities__
+__{Similarities%相同点}__
 
 - {botn of them can be used in template.%它们都可以在模板中声明}
-- 它们在接受String与Expression表现完全一致
-  - 如果value是String类型
-  - 如果value是Expression类型
 
 
-__differences__
 
-- emitter event belongs to component and triggered by `component.$emit`.
+__{differences%不同点}__
+
+{
+- component event belongs to component and triggered by `component.$emit`.
   but dom event belongs to particular element, in most case, is triggered by user action, except for [custom event](#event).
 - Object `$event` in template
   - emitter event: the 2nd param passed into `$emit`.
   - dom event: a wrapped native [dom event](#dom-on), or the object pass into [`fire`](#event) if the event is a custom event.
-
-
-{
-
 %
-
-但是它们仍然有一些不同点
+- 触发手段不同: 1) 组件事件一般由
+  but dom event belongs to particular element, in most case, is triggered by user action, except for [custom event](#event).
+- Object `$event` in template
+  - emitter event: the 2nd param passed into `$emit`.
+  - dom event: a wrapped native [dom event](#dom-on), or the object pass into [`fire`](#event) if the event is a custom event.
+- dom事件会自动进入digest. 但是
 
 }
+
 
 __example__
 
@@ -57,7 +112,7 @@ var component = new Regular({
     console.log("trigger by click on element") 
   },
   nav: function( page ){
-    console.log("nav to page "+ )
+    console.log("nav to page "+ page)
   }
 })
 
@@ -227,9 +282,14 @@ if( this.init ) this.init(this.data);
 
 ## Animation
 
+{
 regularjs's animation is pure declarative, powerful and easily extensible. the animations is chainable and have the ability that connecting other element's animation sequence.
 
 you can using multiple animations via single directive: `r-animation`
+%
+regularjs 提供了纯声明式的动画支持，看完本章指南你会发现regularjs的动画系统的灵活和强大，它甚至可以完美的控制动画队列。
+
+}
 
 To be honest, `r-animation` is the most complex directive in regularjs, but it is worth doing at all.
 

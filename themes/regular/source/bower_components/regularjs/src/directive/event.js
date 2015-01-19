@@ -23,36 +23,38 @@ Regular.event( "enter" , function(elem, fire) {
 })
 
 
-Regular.directive( /^on-\w+$/, function( elem, value, name ) {
+Regular.directive( /^on-\w+$/, function( elem, value, name , attrs) {
   if ( !name || !value ) return;
   var type = name.split("-")[1];
-  return this._handleEvent( elem, type, value );
+  return this._handleEvent( elem, type, value, attrs );
 });
 // TODO.
 /**
 - $('dx').delegate()
 */
-Regular.directive( /^delegate-\w+$/, function( elem, value, name ) {
+Regular.directive( /^delegate-\w+$/, function( elem, value, name, attrs ) {
   var root = this.$root;
   var _delegates = root._delegates || ( root._delegates = {} );
   if ( !name || !value ) return;
   var type = name.split("-")[1];
   var fire = _.handleEvent.call(this, value, type);
 
+  function delegateEvent(ev){
+    matchParent(ev, _delegates[type]);
+  }
+
   if( !_delegates[type] ){
     _delegates[type] = [];
 
-    function delegateEvent(ev){
-      matchParent(ev, _delegates[type]);
-    }
-    root.$on( "inject", function( newParent ){
+    root.$on( "$inject", function( newParent ){
       var preParent = this.parentNode;
       if( preParent ){
-        dom.off(preParent,type, delegateEvent);
+        dom.off(preParent, type, delegateEvent);
       }
       dom.on(newParent, type, delegateEvent);
     })
-    root.$on("destroy", function(){
+
+    root.$on("$destroy", function(){
       if(root.parentNode) dom.off(root.parentNode, type, delegateEvent)
       root._delegates[type] = null;
     })
@@ -78,7 +80,7 @@ function matchParent(ev , delegates){
   var target = ev.target;
   while(target && target !== dom.doc){
     for( var i = 0, len = delegates.length; i < len; i++ ){
-      if(delegates[i]["element"] === target){
+      if(delegates[i].element === target){
         delegates[i].fire(ev);
       }
     }

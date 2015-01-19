@@ -1451,6 +1451,19 @@ __Example__
 Regularjs implement some cross-platform method for internal implementation needs. 
 
 
+<a id="dom-inject"></a>
+#### Regular.dom.inject(element, refer, direction)
+
+`component.$inject` is based on this method
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|element|`Node` `false` | element be injected|
+|refer|`Node` `false` | reference element|
+|direction_(optional default:'bottom')_|String| The place to inject this component. Can be 'top', 'bottom', 'after', or 'before'.|
+
 
 <a id="dom-on"></a>
 #### Regular.dom.on(element, event, handle)

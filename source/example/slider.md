@@ -3,7 +3,7 @@ layout: example
 ----------
 # Slider 
 
-We use [Dynamic include](http://leeluolee.gitbooks.io/regular-guide/en/syntax/include.html) to make the slider have the ability to change the specified part of the template after initialization.
+We use `#include` to make the slider have the ability to change the particular part of the template after initialization.
 
 The css is forked form [foundation.zurb.com](http://foundation.zurb.com/) 
 

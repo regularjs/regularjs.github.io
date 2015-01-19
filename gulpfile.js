@@ -43,11 +43,14 @@ gulp.task('doc:split', function(){
 
 gulp.task("api", ["doc"], function(){
   gulp.src(['./source/_api/**/*'])
-  .pipe(gulp.dest("./public/api"))
-  .pipe(gulp.dest("./.deploy/api"))
+  .pipe(gulp.dest("./public/reference"))
+  .pipe(gulp.dest("./.deploy/reference"))
 })
 
 gulp.task('generate', shell.task(['hexo generate']))
+
+gulp.task('deploy',  shell.task(['gulp generate&&gulp api && hexo deploy']));
+
 
 gulp.task('server', ["watch"], shell.task(['cd public && puer --no-reload']))
 

@@ -1498,6 +1498,19 @@ __Example__
 
 
 
+<a id="dom-inject"></a>
+#### Regular.dom.inject(element, refer, direction)
+
+`component.$inject` is based on this method
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|element|`Node` `false` | 要被插入的节点|
+|refer|`Node` `false` | 参考阶段|
+|direction_(optional default:'bottom')_|String| 组件的位置插入目标的位置.　可以是 'top', 'bottom', 'after', or 'before'.|
+
 
 <a id="dom-on"></a>
 #### Regular.dom.on(element, event, handle)

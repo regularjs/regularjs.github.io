@@ -1,6 +1,5 @@
 {
   "name": "regularjs",
-  "version": "0.2.2",
   "main": "dist/regular.js",
   "description": "reactjs + angularjs = regularjs",
   "authors": "@leeluolee <87399126@163.com>",
@@ -15,14 +14,14 @@
     "*.md"
   ],
   "homepage": "https://github.com/regularjs/regular",
-  "_release": "0.2.2",
+  "_release": "a6eaa8ff15",
   "_resolution": {
-    "type": "version",
-    "tag": "0.2.2",
-    "commit": "e4f789db910deb1e5ef431c00d4f29385e97bcff"
+    "type": "branch",
+    "branch": "master",
+    "commit": "a6eaa8ff15d141d6e4cee7d0a569cbae04642c78"
   },
   "_source": "git://github.com/regularjs/regular.git",
-  "_target": "~0.2.2",
-  "_originalSource": "regularjs",
+  "_target": "master",
+  "_originalSource": "regularjs/regular",
   "_direct": true
 }

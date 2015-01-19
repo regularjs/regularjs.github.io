@@ -2,7 +2,6 @@ var // packages
   _ = require("../util.js"),
  animate = require("../helper/animate.js"),
  dom = require("../dom.js"),
- parse = require("../helper/parse.js"),
  Regular = require("../Regular.js");
 
 
@@ -24,28 +23,36 @@ var // variables
 function createSeed(type){
 
   var steps = [], current = 0, callback = _.noop;
+  var key;
 
   var out = {
     type: type,
     start: function(cb){
+      key = _.uid();
       if(typeof cb === "function") callback = cb;
       if(current> 0 ){
         current = 0 ;
       }else{
         out.step();
       }
+      return out.compelete;
+    },
+    compelete: function(){
+      key = null;
+      callback && callback();
+      callback = _.noop;
+      current = 0;
     },
     step: function(){
-      if(steps[current]) steps[current ]( out.done );
+      if(steps[current]) steps[current ]( out.done.bind(out, key) );
     },
-    done: function(){
+    done: function(pkey){
+      if(pkey !== key) return; // means the loop is down
       if( current < steps.length - 1 ) {
         current++;
         out.step();
       }else{
-        current = 0;
-        callback && callback();
-        callback = _.noop;
+        out.compelete();
       }
     },
     push: function(step){
@@ -79,7 +86,7 @@ Regular.animation({
     }
   },
   "call": function(step){
-    var fn = parse.expression(step.param).get, self = this;
+    var fn = Regular.expression(step.param).get, self = this;
     return function(done){
       // _.log(step.param, 'call')
       fn(self);
@@ -140,6 +147,17 @@ function processAnimate( element, value ){
     seed = createSeed( type );
   }
 
+  function whenCallback(start, value){
+    if( !!value ) start()
+  }
+
+  function animationDestroy(element){
+    return function(){
+      element.onenter = undefined;
+      element.onleave = undefined;
+    } 
+  }
+
   for( var i = 0, len = composites.length; i < len; i++ ){
 
     composite = composites[i];
@@ -151,10 +169,7 @@ function processAnimate( element, value ){
 
     if( command === WHEN_COMMAND ){
       reset("when");
-      this.$watch(param, function(start, value){
-        // confirm is not in this animation
-        if( !!value ) start()
-      }.bind( this, seed.start ) );
+      this.$watch(param, whenCallback.bind( this, seed.start ) );
       continue;
     }
 
@@ -168,18 +183,13 @@ function processAnimate( element, value ){
         destroy = this._handleEvent( element, param, seed.start );
       }
 
-      destroies.push( destroy? destroy : function (){
-          element.onenter = undefined;
-          element.onleave = undefined;
-      });
+      destroies.push( destroy? destroy : animationDestroy(element) );
       destroy = null;
       continue
     }
 
     var animator =  Regular.animation(command) 
-    if(!animator){
-      // _.log("animation " + command + "is not register. ignored");
-    }else if( seed ){
+    if( animator && seed ){
       seed.push(
         animator.call(this,{
           element: element,

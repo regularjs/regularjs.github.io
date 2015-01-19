@@ -1,5 +1,6 @@
 require('./helper/shim.js');
 var _  = module.exports;
+var entities = require('./helper/entities.js');
 var slice = [].slice;
 var o2str = ({}).toString;
 var win = typeof window !=='undefined'? window: global;
@@ -17,10 +18,12 @@ _.varName = '_d_';
 _.setName = '_p_';
 _.ctxName = '_c_';
 
+_.rWord = /^[\$\w]+$/;
+_.rSimpleAccessor = /^[\$\w]+(\.[\$\w]+)*$/;
 
-_.nextTick = typeof setImmediate === 'function'
-  ? setImmediate.bind(win) 
-  : function(callback) {
+_.nextTick = typeof setImmediate === 'function'? 
+  setImmediate.bind(win) : 
+  function(callback) {
     setTimeout(callback, 0) 
   }
 
@@ -163,31 +166,39 @@ _.findSubCapture = function (regStr) {
 };
 
 
-_.escapeRegExp = function(string){// Credit: XRegExp 0.6.1 (c) 2007-2008 Steven Levithan <http://stevenlevithan.com/regex/xregexp/> MIT License
-  return string.replace(/[-[\]{}()*+?.\\^$|,#\s]/g, function(match){
+_.escapeRegExp = function( str){// Credit: XRegExp 0.6.1 (c) 2007-2008 Steven Levithan <http://stevenlevithan.com/regex/xregexp/> MIT License
+  return str.replace(/[-[\]{}()*+?.\\^$|,#\s]/g, function(match){
     return '\\' + match;
   });
 };
 
 
+var rEntity = new RegExp("&(" + Object.keys(entities).join('|') + ');', 'gi');
+
+_.convertEntity = function(chr){
+
+  return ("" + chr).replace(rEntity, function(all, capture){
+    return String.fromCharCode(entities[capture])
+  });
+
+}
 
 
 // simple get accessor
 
 _.createObject = function(o, props){
-    function foo() {}
-    foo.prototype = o;
-    var res = new foo;
+    function Foo() {}
+    Foo.prototype = o;
+    var res = new Foo;
     if(props) _.extend(res, props);
     return res;
 }
 
 _.createProto = function(fn, o){
-    function foo() { this.constructor = fn;}
-    foo.prototype = o;
-    return (fn.prototype = new foo());
+    function Foo() { this.constructor = fn;}
+    Foo.prototype = o;
+    return (fn.prototype = new Foo());
 }
-
 
 
 /**
@@ -195,14 +206,14 @@ clone
 */
 _.clone = function clone(obj){
     var type = _.typeOf(obj);
-    if(type == 'array'){
+    if(type === 'array'){
       var cloned = [];
       for(var i=0,len = obj.length; i< len;i++){
         cloned[i] = obj[i]
       }
       return cloned;
     }
-    if(type == 'object'){
+    if(type === 'object'){
       var cloned = {};
       for(var i in obj) if(obj.hasOwnProperty(i)){
         cloned[i] = obj[i];
@@ -267,13 +278,13 @@ var ld = (function(){
       var current = matrix[i][j];
       while(i>0 || j>0){
       // the last line
-        if (i == 0) {
+        if (i === 0) {
           edits.unshift(3);
           j--;
           continue;
         }
         // the last col
-        if (j == 0) {
+        if (j === 0) {
           edits.unshift(2);
           i--;
           continue;
@@ -284,12 +295,12 @@ var ld = (function(){
 
         var min = Math.min(north, west, northWest);
 
-        if (min == west) {
+        if (min === west) {
           edits.unshift(2); //delete
           i--;
           current = west;
-        } else if (min == northWest ) {
-          if (northWest == current) {
+        } else if (min === northWest ) {
+          if (northWest === current) {
             edits.unshift(0); //no change
           } else {
             edits.unshift(1); //update
@@ -313,7 +324,7 @@ var ld = (function(){
 
       for(var i=0;i<edits.length;i++){
         if(edits[i] > 0 ){ // NOT LEAVE
-          if(step.index == null){
+          if(step.index === null){
             step.index = m;
           }
         } else { //LEAVE
@@ -414,7 +425,7 @@ _.cache = function(max){
         cache[keys.shift()] = undefined;
       }
       // 
-      if(cache[key] == undefined){
+      if(cache[key] === undefined){
         keys.push(key);
       }
       cache[key] = value;
@@ -463,7 +474,7 @@ _.handleEvent = function(value, type ){
     return function fire(obj){
       self.data.$event = obj;
       var res = evaluate(self);
-      if(res !== true && obj && obj.preventDefault) obj.preventDefault();
+      if(res === false && obj && obj.preventDefault) obj.preventDefault();
       delete self.data.$event;
       self.$update();
     }
@@ -485,9 +496,18 @@ _.once = function(fn){
   }
 }
 
-_.log = function(msg){
-  if(window.console)  window.console.log(msg);
+
+
+
+
+
+
+
+_.log = function(msg, type){
+  if(typeof console !== "undefined")  console[type || "log"](msg);
 }
+
+
 
 
 //http://www.w3.org/html/wg/drafts/html/master/single-page.html#void-elements
@@ -503,4 +523,8 @@ _.assert = function(test, msg){
 }
 
 
+
+_.defineProperty = function(){
+  
+}
 

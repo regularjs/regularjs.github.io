@@ -1,10 +1,43 @@
 [Improve this page >](https://github.com/regularjs/blog/edit/master/source/_api/_docs/api.md)
 
 
-# Guide
+# Tips
+
+
+This page serves some content that not included by [api](?api-en) and [syntax](?syntax-en), but they all important.
+
 
 <a id="digest"></a>
-## Dirty-check in regularjs 
+## dirty-check: the secret of data-binding 
+
+事实上，regularjs的数据绑定实现非常接近于angularjs: 都是基于脏检查. 
+
+### Digest phase 
+
+
+
+
+```
+<div on-click={this.add()}></div>
+```
+
+
+
+
+
+
+__Example__
+
+```js
+var component = new Regular();
+
+component.data.name = 'leeluolee'
+
+// you need call $update to Synchronize data and view 
+component.$update(); 
+
+
+```
 
 ## Consistent event system
 
@@ -18,21 +51,17 @@ event by emitter and dom event use the same process. so, they have a lot in comm
 __Similarities__
 
 - botn of them can be used in template.
-- 它们在接受String与Expression表现完全一致
-  - 如果value是String类型
-  - 如果value是Expression类型
+
 
 
 __differences__
 
-- emitter event belongs to component and triggered by `component.$emit`.
+
+- component event belongs to component and triggered by `component.$emit`.
   but dom event belongs to particular element, in most case, is triggered by user action, except for [custom event](#event).
 - Object `$event` in template
   - emitter event: the 2nd param passed into `$emit`.
   - dom event: a wrapped native [dom event](#dom-on), or the object pass into [`fire`](#event) if the event is a custom event.
-
-
-
 
 
 
@@ -48,7 +77,7 @@ var component = new Regular({
     console.log("trigger by click on element") 
   },
   nav: function( page ){
-    console.log("nav to page "+ )
+    console.log("nav to page "+ page)
   }
 })
 
@@ -215,9 +244,11 @@ if( this.init ) this.init(this.data);
 
 ## Animation
 
+
 regularjs's animation is pure declarative, powerful and easily extensible. the animations is chainable and have the ability that connecting other element's animation sequence.
 
 you can using multiple animations via single directive: `r-animation`
+
 
 To be honest, `r-animation` is the most complex directive in regularjs, but it is worth doing at all.
 

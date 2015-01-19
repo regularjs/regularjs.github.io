@@ -1,4 +1,15 @@
 var _ = require("../util.js");
+var config = require("../config.js");
+
+// some custom tag  will conflict with the Lexer progress
+var conflictTag = {"}": "{", "]": "["}, map1, map2;
+// some macro for lexer
+var macro = {
+  'NAME': /(?:[:_A-Za-z][-\.:_0-9A-Za-z]*)/,
+  'IDENT': /[\$_A-Za-z][_0-9A-Za-z\$]*/,
+  'SPACE': /[\r\n\f ]/
+}
+
 
 var test = /a|(b)/.exec("a");
 var testSubCapure = test && test[1] === undefined? 
@@ -12,11 +23,19 @@ function wrapHander(handler){
 }
 
 function Lexer(input, opts){
+  if(conflictTag[config.END]){
+    this.markStart = conflictTag[config.END];
+    this.markEnd = config.END;
+  }
+
   this.input = (input||"").trim();
   this.opts = opts || {};
   this.map = this.opts.mode !== 2?  map1: map2;
   this.states = ["INIT"];
-  if(this.opts.state) this.states.push( this.opts.state );
+  if(opts && opts.expression){
+     this.states.push("JST");
+     this.expression = true;
+  }
 }
 
 var lo = Lexer.prototype
@@ -26,7 +45,7 @@ lo.lex = function(str){
   str = (str || this.input).trim();
   var tokens = [], split, test,mlen, token, state;
   this.input = str, 
-    
+  this.marks = 0;
   // init the pos index
   this.index=0;
   var i = 0;
@@ -85,47 +104,77 @@ lo._process = function(args, split,str){
   }
   return token;
 }
-/**
- * 进入某种状态
- * @param  {[type]} state [description]
- * @return {[type]}
- */
 lo.enter = function(state){
-  // 如果有多层状态则 则这里用一个栈来标示，
-  // 个人目前还没有遇到词法解析阶段需要多层判断的场景
   this.states.push(state)
   return this;
 }
-/**
- * 退出
- * @return {[type]}
- */
 
 lo.state = function(){
   var states = this.states;
   return states[states.length-1];
 }
 
-/**
- * 退出某种状态
- * @return {[type]}
- */
 lo.leave = function(state){
   var states = this.states;
   if(!state || states[states.length-1] === state) states.pop()
 }
 
-var macro = {
-  'BEGIN': '{{',
-  'END': '}}',
-  //http://www.w3.org/TR/REC-xml/#NT-Name
-  // ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
-  // 暂时不这么严格，提取合适范围
-  // 'NAME': /(?:[:_A-Za-z\xC0-\u2FEF\u3001-\uD7FF\uF900-\uFFFF][-\.:_0-9A-Za-z\xB7\xC0-\u2FEF\u3001-\uD7FF\uF900-\uFFFF]*)/
-  'NAME': /(?:[:_A-Za-z][-\.:_0-9A-Za-z]*)/,
-  'IDENT': /[\$_A-Za-z][_0-9A-Za-z\$]*/,
-  'SPACE': /[\r\n\f ]/
+
+Lexer.setup = function(){
+  macro.END = config.END;
+  macro.BEGIN = config.BEGIN;
+  //
+  map1 = genMap([
+    // INIT
+    rules.ENTER_JST,
+    rules.ENTER_TAG,
+    rules.TEXT,
+
+    //TAG
+    rules.TAG_NAME,
+    rules.TAG_OPEN,
+    rules.TAG_CLOSE,
+    rules.TAG_PUNCHOR,
+    rules.TAG_ENTER_JST,
+    rules.TAG_UNQ_VALUE,
+    rules.TAG_STRING,
+    rules.TAG_SPACE,
+    rules.TAG_COMMENT,
+
+    // JST
+    rules.JST_OPEN,
+    rules.JST_CLOSE,
+    rules.JST_COMMENT,
+    rules.JST_EXPR_OPEN,
+    rules.JST_IDENT,
+    rules.JST_SPACE,
+    rules.JST_LEAVE,
+    rules.JST_NUMBER,
+    rules.JST_PUNCHOR,
+    rules.JST_STRING,
+    rules.JST_COMMENT
+    ])
+
+  // ignored the tag-relative token
+  map2 = genMap([
+    // INIT no < restrict
+    rules.ENTER_JST2,
+    rules.TEXT,
+    // JST
+    rules.JST_COMMENT,
+    rules.JST_OPEN,
+    rules.JST_CLOSE,
+    rules.JST_EXPR_OPEN,
+    rules.JST_IDENT,
+    rules.JST_SPACE,
+    rules.JST_LEAVE,
+    rules.JST_NUMBER,
+    rules.JST_PUNCHOR,
+    rules.JST_STRING,
+    rules.JST_COMMENT
+    ])
 }
+
 
 function genMap(rules){
   var rule, map = {}, sign;
@@ -173,9 +222,6 @@ function setup(map){
   return map;
 }
 
-/**
- * build the mode 1 and mode 2‘s tokenizer
- */
 var rules = {
 
   // 1. INIT
@@ -203,10 +249,10 @@ var rules = {
   // 2. TAG
   // --------------------
   TAG_NAME: [/{NAME}/, 'NAME', 'TAG'],
-  TAG_UNQ_VALUE: [/[^&"'=><`\r\n\f ]+/, 'UNQ', 'TAG'],
+  TAG_UNQ_VALUE: [/[^\{}&"'=><`\r\n\f ]+/, 'UNQ', 'TAG'],
 
   TAG_OPEN: [/<({NAME})\s*/, function(all, one){
-    return {type: 'TAG_OPEN', value: one.toLowerCase() }
+    return {type: 'TAG_OPEN', value: one}
   }, 'TAG'],
   TAG_CLOSE: [/<\/({NAME})[\r\n\f ]*>/, function(all, one){
     this.leave();
@@ -241,12 +287,18 @@ var rules = {
       value: name
     }
   }, 'JST'],
-  JST_LEAVE: [/{END}/, function(){
-    this.leave('JST');
-    return {type: 'END'}
+  JST_LEAVE: [/{END}/, function(all){
+    if(this.markEnd === all && this.expression) return {type: this.markEnd, value: this.markEnd};
+    if(!this.markEnd || !this.marks ){
+      this.firstEnterStart = false;
+      this.leave('JST');
+      return {type: 'END'}
+    }else{
+      this.marks--;
+      return {type: this.markEnd, value: this.markEnd}
+    }
   }, 'JST'],
-
-  JST_CLOSE: [/{BEGIN}\s*\/\s*({IDENT})\s*{END}/, function(all, one){
+  JST_CLOSE: [/{BEGIN}\s*\/({IDENT})\s*{END}/, function(all, one){
     this.leave('JST');
     return {
       type: 'CLOSE',
@@ -257,11 +309,21 @@ var rules = {
     this.leave();
   }, 'JST'],
   JST_EXPR_OPEN: ['{BEGIN}',function(all, one){
-    var escape = one === '=';
+    if(all === this.markStart){
+      if(this.expression) return { type: this.markStart, value: this.markStart };
+      if(this.firstEnterStart || this.marks){
+        this.marks++
+        this.firstEnterStart = false;
+        return { type: this.markStart, value: this.markStart };
+      }else{
+        this.firstEnterStart = true;
+      }
+    }
     return {
       type: 'EXPR_OPEN',
-      escape: escape
+      escape: false
     }
+
   }, 'JST'],
   JST_IDENT: ['{IDENT}', 'IDENT', 'JST'],
   JST_SPACE: [/[ \r\n\f]+/, null, 'JST'],
@@ -277,59 +339,10 @@ var rules = {
   }, 'JST']
 }
 
-//
-var map1 = genMap([
-  // INIT
-  rules.ENTER_JST,
-  rules.ENTER_TAG,
-  rules.TEXT,
 
-  //TAG
-  rules.TAG_NAME,
-  rules.TAG_OPEN,
-  rules.TAG_CLOSE,
-  rules.TAG_PUNCHOR,
-  rules.TAG_ENTER_JST,
-  rules.TAG_UNQ_VALUE,
-  rules.TAG_STRING,
-  rules.TAG_SPACE,
-  rules.TAG_COMMENT,
-
-  // JST
-  rules.JST_OPEN,
-  rules.JST_CLOSE,
-  rules.JST_COMMENT,
-  rules.JST_EXPR_OPEN,
-  rules.JST_IDENT,
-  rules.JST_SPACE,
-  rules.JST_LEAVE,
-  rules.JST_NUMBER,
-  rules.JST_PUNCHOR,
-  rules.JST_STRING,
-  rules.JST_COMMENT
-  ])
-
-// ignored the tag-relative token
-var map2 = genMap([
-  // INIT no < restrict
-  rules.ENTER_JST2,
-  rules.TEXT,
-  // JST
-  rules.JST_COMMENT,
-  rules.JST_OPEN,
-  rules.JST_CLOSE,
-  rules.JST_EXPR_OPEN,
-  rules.JST_IDENT,
-  rules.JST_SPACE,
-  rules.JST_LEAVE,
-  rules.JST_NUMBER,
-  rules.JST_PUNCHOR,
-  rules.JST_STRING,
-  rules.JST_COMMENT
-  ])
+// setup when first config
+Lexer.setup();
 
 
 
 module.exports = Lexer;
-
-

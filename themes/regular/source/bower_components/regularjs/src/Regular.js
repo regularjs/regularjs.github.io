@@ -1,15 +1,8 @@
-/**
- * Provides more features for the widget module...
- *
- * @module widget
- * @submodule widget-foo
- * @main widget
- */
 
 var Lexer = require("./parser/Lexer.js");
 var Parser = require("./parser/Parser.js");
-var node = require("./parser/node.js");
 var dom = require("./dom.js");
+var config = require("./config.js");
 var Group = require('./group.js');
 var _ = require('./util');
 var extend = require('./helper/extend.js');
@@ -17,65 +10,80 @@ var Event = require('./helper/event.js');
 var combine = require('./helper/combine.js');
 var Watcher = require('./helper/watcher.js');
 var parse = require('./helper/parse.js');
-var walkers = require('./walkers.js');
+var filter = require('./helper/filter.js');
 var doc = typeof document==='undefined'? {} : document;
 var env = require('./env.js');
 
 
 /**
-* This is the description for my class.
-* > dadada
-*
-* @class MyClass
+* `Regular` is regularjs's NameSpace and BaseClass. Every Component is inherited from it
+* 
+* @class Regular
+* @module Regular
 * @constructor
+* @param {Object} options specification of the component
 */
-
 var Regular = function(options){
   var prevRunning = env.isRunning;
   env.isRunning = true;
-  var node, template, name;
+  var node, template;
 
   options = options || {};
   options.data = options.data || {};
+  options.computed = options.computed || {};
+  options.events = options.events || {};
   if(this.data) _.extend(options.data, this.data);
+  if(this.computed) _.extend(options.computed, this.computed);
+  if(this.events) _.extend(options.events, this.events);
+
   _.extend(this, options, true);
   if(this.$parent){
      this.$parent._append(this);
   }
   this._children = [];
+  this.$refs = {};
 
   template = this.template;
 
-  if(typeof template === 'string' && template.length < 40 && (node = dom.find(template))) {
+  // template is a string (len < 40). we will find it container first
+  if((typeof template === 'string' && template.length < 40) && (node = dom.find(template))) {
     template = node.innerHTML;
   }
-  if(typeof template === 'string') this.template = new Parser(template).parse()
-  this.config && this.config(this.data);
+  // if template is a xml
+  if(template && template.nodeType) template = template.innerHTML;
+  if(typeof template === 'string') this.template = new Parser(template).parse();
+
+  this.computed = handleComputed(this.computed);
   this.$context = this.$context || this;
   this.$root = this.$root || this;
   // if have events
   if(this.events){
     this.$on(this.events);
-    this.events = null;
   }
 
+  this.config && this.config(this.data);
+  // handle computed
   if(template){
-    this.group = this.$compile(this.template);
+    this.group = this.$compile(this.template, {namespace: options.namespace});
     combine.node(this);
   }
 
-  if(this.$root === this) this.$update();
-  this.$ready = true;
-  this.$emit({type: 'init', stop: true });
-  if( this.init ) this.init(this.data);
 
   if(this.$root === this) this.$update();
+  this.$ready = true;
+  if(this.$context === this) this.$emit("$init");
+  if( this.init ) this.init(this.data);
+
+  // @TODO: remove, maybe , there is no need to update after init; 
+  // if(this.$root === this) this.$update();
   env.isRunning = prevRunning;
 
   // children is not required;
 }
 
 
+var walkers = require('./walkers.js');
+walkers.Regular = Regular;
 
 
 // description
@@ -85,41 +93,44 @@ _.extend(Regular, {
   // private data stuff
   _directives: { __regexp__:[] },
   _plugins: {},
-  _exprCache:{},
-  _running: false,
-  _protoInheritCache: ['use', 'directive'] ,
+  _protoInheritCache: [ 'directive', 'use'] ,
   __after__: function(supr, o) {
-
 
     var template;
     this.__after__ = supr.__after__;
 
-    if(o.name) Regular.component(o.name, this);
+    if(o.name) supr.component(o.name, this);
+    // this.prototype.template = dom.initTemplate(o)
     if(template = o.template){
       var node, name;
       if( typeof template === 'string' && template.length < 20 && ( node = dom.find( template )) ){
         template = node.innerHTML;
         if(name = dom.attr(node, 'name')) Regular.component(name, this);
       }
-      if(typeof template == 'string'){
+
+      if(template.nodeType) template = template.innerHTML;
+
+      if(typeof template === 'string'){
         this.prototype.template = new Parser(template).parse();
       }
     }
+
+    if(o.computed) this.prototype.computed = handleComputed(o.computed);
     // inherit directive and other config from supr
     Regular._inheritConfig(this, supr);
 
   },
   /**
-   * directive's setter and getter
-   * @param  {String|RegExp} name  
-   * @param  {[type]} cfg  [description]
-   * @return {[type]}      [description]
-   */
+   * Define a directive
+   *
+   * @method directive
+   * @return {Object} Copy of ...
+   */  
   directive: function(name, cfg){
 
     if(_.typeOf(name) === "object"){
-      for(var i in name){
-        if(name.hasOwnProperty(i)) this.directive(i, name[i]);
+      for(var k in name){
+        if(name.hasOwnProperty(k)) this.directive(k, name[k]);
       }
       return this;
     }
@@ -157,19 +168,32 @@ _.extend(Regular, {
     fn(this, Regular);
     return this;
   },
+  // config the Regularjs's global
+  config: function(name, value){
+    var needGenLexer = false;
+    if(typeof name === "object"){
+      for(var i in name){
+        // if you config
+        if( i ==="END" || i==='BEGIN' )  needGenLexer = true;
+        config[i] = name[i];
+      }
+    }
+    if(needGenLexer) Lexer.setup();
+  },
   expression: parse.expression,
   parse: parse.parse,
 
   Parser: Parser,
   Lexer: Lexer,
 
-  _addProtoInheritCache: function(name){
+  _addProtoInheritCache: function(name, transform){
     if( Array.isArray( name ) ){
       return name.forEach(Regular._addProtoInheritCache);
     }
     var cacheKey = "_" + name + "s"
     Regular._protoInheritCache.push(name)
     Regular[cacheKey] = {};
+    if(Regular[name]) return;
     Regular[name] = function(key, cfg){
       var cache = this[cacheKey];
 
@@ -180,7 +204,7 @@ _.extend(Regular, {
         return this;
       }
       if(cfg == null) return cache[key];
-      cache[key] = cfg;
+      cache[key] = transform? transform(cfg) : cfg;
       return this;
     }
   },
@@ -197,20 +221,43 @@ _.extend(Regular, {
     })
     return self;
   }
+
 });
 
 extend(Regular);
 
-Regular._addProtoInheritCache(["filter", "component"])
+Regular._addProtoInheritCache("component")
+
+Regular._addProtoInheritCache("filter", function(cfg){
+  return typeof cfg === "function"? {get: cfg}: cfg;
+})
 
 
 Event.mixTo(Regular);
 Watcher.mixTo(Regular);
 
 Regular.implement({
-
-
   init: function(){},
+  config: function(){},
+  destroy: function(){
+    // destroy event wont propgation;
+    if(this.$context === this) this.$emit("$destroy");
+    this.group && this.group.destroy(true);
+    this.group = null;
+    this.parentNode = null;
+    this._watchers = null;
+    this._children = [];
+    var parent = this.$parent;
+    if(parent){
+      var index = parent._children.indexOf(this);
+      parent._children.splice(index,1);
+    }
+    this.$parent = null;
+    this.$root = null;
+    this._handles = null;
+    this.$refs = null;
+  },
+
   /**
    * compile a block ast ; return a group;
    * @param  {Array} parsed ast
@@ -218,10 +265,14 @@ Regular.implement({
    * @return {[type]}
    */
   $compile: function(ast, options){
+    options = options || {};
     if(typeof ast === 'string'){
       ast = new Parser(ast).parse()
     }
-    var record = options && options.record, records;
+    var preNs = this.__ns__,
+      record = options.record, 
+      records;
+    if(options.namespace) this.__ns__ = options.namespace;
     if(record) this._record();
     var group = this._walk(ast, options);
     if(record){
@@ -232,8 +283,10 @@ Regular.implement({
         group.ondestroy = function(){ self.$unwatch(records); }
       }
     }
+    if(options.namespace) this.__ns__ = preNs;
     return group;
   },
+
 
   /**
    * create two-way binding with another component;
@@ -262,7 +315,7 @@ Regular.implement({
    */
   $bind: function(component, expr1, expr2){
     var type = _.typeOf(expr1);
-    if(expr1.type === 'expression' || type == 'string'){
+    if( expr1.type === 'expression' || type === 'string' ){
       this._bind(component, expr1, expr2)
     }else if( type === "array" ){ // multiply same path binding through array
       for(var i = 0, len = expr1.length; i < len; i++){
@@ -285,38 +338,33 @@ Regular.implement({
    * @param  {Regular} component [description]
    * @return {This}    this
    */
-  $unbind: function(component){
+  $unbind: function(){
     // todo
   },
-  $get: function(expr){
-    return Regular.expression(expr).get(this);
-  },
-  destroy: function(){
-    // destroy event wont propgation;
-    this.$emit({type: 'destroy', stop: true });
-    this.group && this.group.destroy(true);
-    this.group = null;
-    this.parentNode = null;
-    this._watchers = null;
-    this._children = [];
-    var parent = this.$parent;
-    if(parent){
-      var index = parent._children.indexOf(this);
-      parent._children.splice(index,1);
-    }
-    this.$parent = null;
-    this.$root = null;
-    this._events = null;
-    this.$off();
-  },
-  $inject: function(node, position){
+  $inject: function(node, position, options){
     var fragment = combine.node(this);
+
+    if(node === false) {
+      if(!this._fragContainer)  this._fragContainer = dom.fragment();
+      return this.$inject(this._fragContainer);
+    }
     if(typeof node === 'string') node = dom.find(node);
-    if(!node) throw 'injected node is not found'
-    if(!fragment) return;
+    if(!node) throw 'injected node is not found';
+    if(!fragment) return this;
     dom.inject(fragment, node, position);
-    this.$emit("inject", node);
-    this.parentNode = node;
+    this.$emit("$inject", node);
+    this.parentNode = Array.isArray(fragment)? fragment[0].parentNode: fragment.parentNode;
+    return this;
+  },
+  $mute: function(isMute){
+
+    isMute = !!isMute;
+
+    var needupdate = isMute === false && this._mute;
+
+    this._mute = !!isMute;
+
+    if(needupdate) this.$update();
     return this;
   },
   // private bind logic
@@ -324,19 +372,21 @@ Regular.implement({
 
     var self = this;
     // basic binding
+
     if(!component || !(component instanceof Regular)) throw "$bind() should pass Regular component as first argument";
     if(!expr1) throw "$bind() should  pass as least one expression to bind";
-    expr1 = Regular.expression(expr1);
 
     if(!expr2) expr2 = expr1;
-    else expr2 = Regular.expression(expr2);
+
+    expr1 = parse.expression( expr1 );
+    expr2 = parse.expression( expr2 );
 
     // set is need to operate setting ;
     if(expr2.set){
-      var wid1 = this.$watch(expr1, function(value){
+      var wid1 = this.$watch( expr1, function(value){
         component.$update(expr2, value)
       });
-      component.$on('destroy', function(){
+      component.$on('$destroy', function(){
         self.$unwatch(wid1)
       })
     }
@@ -345,7 +395,7 @@ Regular.implement({
         self.$update(expr1, value)
       });
       // when brother destroy, we unlink this watcher
-      this.$on('destroy', component.$unwatch.bind(component,wid2))
+      this.$on('$destroy', component.$unwatch.bind(component,wid2))
     }
     // sync the component's state to called's state
     expr2.set(component, expr1.get(this));
@@ -368,30 +418,127 @@ Regular.implement({
     component.$root = this.$root;
     component.$parent = this;
   },
-
-  // find filter
-  _f: function(name){
-    var Component = this.constructor;
-    var filter = Component.filter(name);
-    if(typeof filter !== 'function') throw 'filter ' + name + 'is undefined';
-    return filter;
-  },
-  _handleEvent: function(elem, type, value){
+  _handleEvent: function(elem, type, value, attrs){
     var Component = this.constructor,
       fire = typeof value !== "function"? _.handleEvent.call( this, value, type ) : value,
       handler = Component.event(type), destroy;
 
     if ( handler ) {
-      destroy = handler.call(this, elem, fire);
+      destroy = handler.call(this, elem, fire, attrs);
     } else {
       dom.on(elem, type, fire);
     }
     return handler ? destroy : function() {
       dom.off(elem, type, fire);
     }
+  },
+  // find filter
+  _f_: function(name){
+    var Component = this.constructor;
+    var filter = Component.filter(name);
+    if(!filter) throw 'filter ' + name + ' is undefined';
+    return filter;
+  },
+  // simple accessor get
+  _sg_:function(path, defaults, needComputed){
+    if(needComputed){
+      var computed = this.computed,
+        computedProperty = computed[path];
+      if(computedProperty){
+        if(computedProperty.get)  return computedProperty.get(this);
+        else _.log("the computed '" + path + "' don't define the get function,  get data."+path + " altnately", "error")
+      }
+    }
+    if(typeof defaults === "undefined" || typeof path == "undefined" ) return undefined;
+    return defaults[path];
+
+  },
+  // simple accessor set
+  _ss_:function(path, value, data , op, computed){
+    var computed = this.computed,
+      op = op || "=", prev, 
+      computedProperty = computed? computed[path]:null;
+
+    if(op !== '='){
+      prev = computedProperty? computedProperty.get(this): data[path];
+      switch(op){
+        case "+=":
+          value = prev + value;
+          break;
+        case "-=":
+          value = prev - value;
+          break;
+        case "*=":
+          value = prev * value;
+          break;
+        case "/=":
+          value = prev / value;
+          break;
+        case "%=":
+          value = prev % value;
+          break;
+      }
+    }
+    if(computedProperty) {
+      if(computedProperty.set) return computedProperty.set(this, value);
+      else _.log("the computed '" + path + "' don't define the set function,  assign data."+path + " altnately", "error" )
+    }
+    data[path] = value;
+    return value;
   }
 });
 
 Regular.prototype.inject = Regular.prototype.$inject;
 
+
+// only one builtin filter
+
+Regular.filter(filter);
+
 module.exports = Regular;
+
+
+
+var handleComputed = (function(){
+  // wrap the computed getter;
+  function wrapGet(get){
+    return function(context){
+      var ctx = context.$context;
+      return get.call(ctx, ctx.data );
+    }
+  }
+  // wrap the computed setter;
+  function wrapSet(set){
+    return function(context, value){
+      var ctx = context.$context;
+      set.call( ctx, value, ctx.data );
+      return value;
+    }
+  }
+
+  return function(computed){
+    if(!computed) return;
+    var parsedComputed = {}, handle, pair, type;
+    for(var i in computed){
+      handle = computed[i]
+      type = typeof handle;
+
+      if(handle.type === 'expression'){
+        parsedComputed[i] = handle;
+        continue;
+      }
+      if( type === "string" ){
+        parsedComputed[i] = parse.expression(handle)
+      }else{
+        pair = parsedComputed[i] = {type: 'expression'};
+        if(type === "function" ){
+          pair.get = wrapGet(handle);
+        }else{
+          if(handle.get) pair.get = wrapGet(handle.get);
+          if(handle.set) pair.set = wrapSet(handle.set);
+        }
+      } 
+    }
+    return parsedComputed;
+  }
+})();
