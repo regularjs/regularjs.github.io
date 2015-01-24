@@ -240,6 +240,13 @@ if( this.init ) this.init(this.data);
 
 
 
+## Manage regularjs's template easily
+
+<!-- t -->
+
+
+
+
 
 
 ## Animation
