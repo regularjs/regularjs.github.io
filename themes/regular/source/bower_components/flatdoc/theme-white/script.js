@@ -180,6 +180,7 @@
 //
 //     $.anchorjump('#bank-deposit', options);
 
+debugger
 (function($) {
   var defaults = {
     'speed': 500,
@@ -189,6 +190,7 @@
   };
 
   $.fn.anchorjump = function(options) {
+    debugger
     options = $.extend({}, defaults, options);
 
     if (options['for']) {

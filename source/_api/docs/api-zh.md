@@ -1,4 +1,5 @@
 
+#API Reference
 
 
 [完善此页 >](https://github.com/regularjs/blog/edit/master/source/_api/_docs/api.md)
@@ -17,7 +18,7 @@ __ 命名约定 __
 <!-- /t -->
 
 <a  name="extend"></a>
-### Component.extend(options)
+###Component.extend
 
 
 
@@ -59,7 +60,7 @@ SubComponent[Function]: 继承自Component的组件
 
 
 
-### Component.implement(options)
+###Component.implement
 
 
 
@@ -114,7 +115,7 @@ Component.implement({
 
 
 
-### new Component(options)
+###new Component
 
 __Usage: `new Component(options)`__
 
@@ -152,7 +153,7 @@ __Return__
 
 
 <a href="##" name="options"></a>
-### options *
+###options *
 
 the options for define a Component. all property we don't 
 
@@ -168,7 +169,7 @@ the options for define a Component. all property we don't
 <!-- /t -->
 
 
-#### template
+####template
 
 
 - type: String | Selector | AST
@@ -179,7 +180,7 @@ the options for define a Component. all property we don't
 
 
 
-#### config( data )
+####config( data )
 
 
 - type: Function
@@ -188,7 +189,7 @@ the options for define a Component. all property we don't
 会在模板编译 __之前__ 被调用，__config一般是用来初始化参数__，它接收一个Object类型的参数data, 即你在初始化时传入的data参数.
 <!-- /t -->
 
-#### init
+####init
 
 - type: Function
 
@@ -196,7 +197,7 @@ the options for define a Component. all property we don't
 会在模板编译 __之后__(即活动dom已经产生)被调用. 你可以在这里处理一些与dom相关的逻辑　
 <!-- /t -->
 
-#### destory: 
+####destory: 
 
 - type: Function
 
@@ -221,7 +222,7 @@ component.destory();
 
 
 
-#### name: 
+####name: 
 
 
 
@@ -268,7 +269,7 @@ SuperComponent.component('foo1', Component)
 ```
 
 
-#### events
+####events
 
 - type: Object
 
@@ -290,7 +291,7 @@ Regular.extend({
 ```
 
 
-#### data
+####data
 
 - type: Object
 
@@ -317,7 +318,7 @@ console.log(component.data.prop1) // ==> 1
 <a id="directive"></a>
 
 
-### Component.directive
+###Component.directive
 
 __Usage__
 
@@ -340,7 +341,7 @@ __Arguments__
 
 <a id="filter"></a>
 
-### Component.filter
+###Component.filter
 
 
 __Usage__
@@ -412,7 +413,7 @@ Regular.filter("format", filter)
 
 
 <a href="##" id="two-way-fitler"></a>
-####  双向过滤器
+#### 双向过滤器
 
 
 双向过滤器主要是帮助我们实现数据的对流, 对任意数据读或写操作时可以进行过滤操作, 与计算属性不同的是，双向过滤器定义是不与具体的数据进行绑定,它是一种可复用的抽象.
@@ -420,14 +421,14 @@ Regular.filter("format", filter)
 
 
 
-#### 内建过滤器
+####内建过滤器
 
 
 如果需要请开一个issue 来描述你的需求, 目前作者没有想到必须支持的过滤器. 而dateformat等常用的，往往需要引入较大的代码量.
 
 
 
-##### json
+#####json
 
  这是一个双向过滤器
 
@@ -454,7 +455,7 @@ component.$update("user|json", "{'name': 'leeluolee', 'age': 10}")
 
 <a href="##" id="event"></a>
 
-### Component.event
+###Component.event
 
 __Usage__
 
@@ -490,7 +491,7 @@ Component.event()
 
 
 <a href="##" name="animation"></a>
-### Component.animation
+###Component.animation
 
 
 自定义一个动画command. animation接口完全是为`r-animation`指令服务的.
@@ -505,7 +506,7 @@ Component.animation(name, factory)
 
 
 <a href="##" name="component"></a>
-### Component.component
+###Component.component
 
 
 注册一个组件，使其可以被,　这里类似与在[options](#options)中声明`name`
@@ -548,7 +549,7 @@ Component2 = Component.extend({
 
 
 
-### Component.use
+###Component.use
 
 __Usage__
 
@@ -606,7 +607,7 @@ Regular.use(FooPlugin);
 
 
 
-### Regular.config
+###Regular.config
 
 配置一些全局属性, 目前主要可以用来配置模板的自定义开关符号
 
@@ -643,7 +644,7 @@ Regular.config({
 
 
 
-### Regular.expression
+###Regular.expression
 
 创建一个表达式，基本上你不会使用此方法
 
@@ -663,7 +664,7 @@ __Return__
 Expression
 
 
-### Regular.parse
+###Regular.parse
 
 
 解析模板字符串为AST, 基本上你不会使用此方法。
@@ -700,7 +701,7 @@ Regular.parse("<h2>{title}</h2>")
 
 
 <a id="instance"></a>
-## 实例接口
+##实例接口
 
 
 
@@ -709,7 +710,7 @@ component即代表组件实例, 注意这些公有都有`$`前缀 意味不建�
 
 
 
-### component.$inject
+###component.$inject
 
  
 插入组件到指定位置
@@ -819,7 +820,7 @@ __Tips__
 
 
 
-### component.$watch
+###component.$watch
 
 
 注册一个监听回调，一旦绑定的表达式的值发生改变，它将会被调用
@@ -858,7 +859,7 @@ component.$watch("user.name", function(newValue, oldValue){
 
 
 <a name="unwatch"></a>
-### component.$unwatch
+###component.$unwatch
 
 
 利用watchid解绑一个数据监听,　一般来讲你很少会用到它，因为所有regularjs中的数据绑定会被自动回收，除非你想在模板回收之前清除某个绑定.
@@ -884,7 +885,7 @@ component.$update('b', 100); // only alert 'watcher 1'
 ```
 
 <a href="##" id="update"></a>
-### component.$update
+###component.$update
 
 `component.$update` is used to synchronize data and view
 
@@ -1015,7 +1016,7 @@ console.log(component.data.title) // => {title:1};
 
 
 
-### component.$get
+###component.$get
 
 __Usage__
 
@@ -1045,7 +1046,7 @@ __Arguments__
 |expression|Expression|String|表达式|
 
 <a id="refs"></a>
-### component.$refs
+###component.$refs
 
 - type: Object
 
@@ -1070,7 +1071,7 @@ component = new Regular({
 
 > The  less reference the better
 
-### component.$on
+###component.$on
 
 
 Register an `event` handler `fn`.
@@ -1108,7 +1109,7 @@ component.$on({
 
 
 
-### component.$off      
+###component.$off      
 
 __Usage__
 
@@ -1131,7 +1132,7 @@ __Arguments__
 
 
 
-### component.$emit
+###component.$emit
 
 触发指定事件
 
@@ -1185,7 +1186,7 @@ component.$emit('other');
 
 
 
-### component.$mute
+###component.$mute
 
 
 你可以使用`$mute(true)`让组件失效，使其不参与到脏检查中. 后续使用 $mute(false)　来重新激活一个被失效的组件,　激活的同时，会自动进行一次数据与ui同步.
@@ -1229,7 +1230,7 @@ component.$update();
 ```
 
 
-### component.$bind
+###component.$bind
 
 
 
@@ -1309,7 +1310,7 @@ you may want [the source code of pager ](https://rawgit.com/regularjs/regular/ma
 
 
 
-## 指令
+##指令
 
 
 Regularjs 提供了一些常用的内置指令
@@ -1319,7 +1320,7 @@ Regularjs 提供了一些常用的内置指令
 
 
 
-### on-[eventName]
+###on-[eventName]
 
 {
 
@@ -1342,7 +1343,7 @@ __Arguments__
 During the compile phase, once regularjs's saw `on-*` in template, regularjs handle it as follow
 
 
-### r-model
+###r-model
 
 very similar to `ng-model` in angular, `r-model` can help you to create two-way binding between data and the form element.
 
@@ -1389,7 +1390,7 @@ you can check the [r-model-example](http://jsfiddle.net/leeluolee/4y25j/) on jsf
 
 
 
-### r-style
+###r-style
 
 `r-style` is an enhancement for plain `style` interpolation.
 
@@ -1425,7 +1426,7 @@ Description
 
 > for examle . `<div style='left: {left}px' r-style='{left: left+"px"}'></div>`
 
-### r-class
+###r-class
 
 simmilar to `r-style`. `r-class` is an enhancement for plain `class` interpolation,
 
@@ -1450,7 +1451,7 @@ Description
 
 > __Warning: just like `r-style`, if there is already an interpolation on `class`, the `r-class` will be overridden__
 
-### r-hide
+###r-hide
 
 __Exmaple__
 
@@ -1463,7 +1464,7 @@ if the Expression `page !== 'home'` is evaluated to true, the `display:none` wil
 
 
 
-### r-html
+###r-html
 
 unescaped interpolation use innerHTML. beware of attack like `xss`.
 
@@ -1474,7 +1475,7 @@ __Example__
 ```
 
 
-### r-animation
+###r-animation
 
 
 
@@ -1487,10 +1488,10 @@ __Example__
 
 
 
-## 其它
+##其它
 
 
-### Regular.dom
+###Regular.dom
 
 
 
@@ -1499,7 +1500,7 @@ __Example__
 
 
 <a id="dom-inject"></a>
-#### Regular.dom.inject(element, refer, direction)
+####Regular.dom.inject(element, refer, direction)
 
 `component.$inject` is based on this method
 
@@ -1513,7 +1514,7 @@ __Arguments__
 
 
 <a id="dom-on"></a>
-#### Regular.dom.on(element, event, handle)
+####Regular.dom.on(element, event, handle)
 
 
 绑定节点事件,　下列事件对象中的属性已经被修正，你可以在IE6-8使用它们. 回调的this对象也修正为element本身.
@@ -1537,14 +1538,14 @@ dom.on(element, 'click', function(ev){
 
 ```
 
-#### Regular.dom.off(node, event, handle)
+####Regular.dom.off(node, event, handle)
 
 
 移除一个事件监听器
 
 
 
-#### Regular.dom.addClass(element, className)
+####Regular.dom.addClass(element, className)
 
  
 添加节点className
@@ -1553,12 +1554,12 @@ dom.on(element, 'click', function(ev){
 
 
 
-#### Regular.dom.delClass(element, className)
+####Regular.dom.delClass(element, className)
 
 移除节点的某段className
 
 
-#### Regular.dom.hasClass(element, className)
+####Regular.dom.hasClass(element, className)
 
  
 判断节点是否拥有某个className
@@ -1573,13 +1574,13 @@ dom.hasClass(element, 'class1') // => true
 ```
 
 
-#### Regular.dom.text(element[, value])
+####Regular.dom.text(element[, value])
 
 
 根据浏览器和节点, 设置节点的textContent　或　innerText
 
 
-#### Regular.dom.html(element[, value])
+####Regular.dom.html(element[, value])
 
 
 设置或获取节点的innerHTML值
@@ -1587,7 +1588,7 @@ dom.hasClass(element, 'class1') // => true
 
 
 
-#### Regular.dom.attr(element, name [ , value])
+####Regular.dom.attr(element, name [ , value])
 
 
 设置或获取节点的指定属性

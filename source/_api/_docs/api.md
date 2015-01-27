@@ -1,11 +1,12 @@
 
+#API Reference
 
 
 [{Improve this page%完善此页} >](https://github.com/regularjs/blog/edit/master/source/_api/_docs/api.md)
 
 <!-- t -->
 
-## Static API
+##Static API
 
 
 __ Naming Convention __
@@ -26,7 +27,7 @@ __ 命名约定 __
 <!-- /t -->
 
 <a  name="extend"></a>
-### Component.extend(options)
+###Component.extend
 
 
 {
@@ -70,7 +71,7 @@ SubComponent[Function]: {SubClass inherit from Component %继承自Component的�
 
 
 
-### Component.implement(options)
+###Component.implement
 
 <!-- t -->
 <!-- s -->
@@ -135,7 +136,7 @@ Component.implement({
 
 
 
-### new Component(options)
+###new Component
 
 __Usage: `new Component(options)`__
 
@@ -177,7 +178,7 @@ options passed during initialize time will become the __instance property__, mea
 
 
 <a href="##" name="options"></a>
-### options *
+###options *
 
 the options for define a Component. all property we don't 
 
@@ -194,7 +195,7 @@ the options for define a Component. all property we don't
 <!-- /t -->
 
 
-#### template
+####template
 
 
 - type: String | Selector | AST
@@ -206,7 +207,7 @@ the options for define a Component. all property we don't
 }
 
 
-#### config( data )
+####config( data )
 
 
 - type: Function
@@ -216,7 +217,7 @@ the options for define a Component. all property we don't
 会在模板编译 __之前__ 被调用，__config一般是用来初始化参数__，它接收一个Object类型的参数data, 即你在初始化时传入的data参数.
 <!-- /t -->
 
-#### init
+####init
 
 - type: Function
 
@@ -225,7 +226,7 @@ the options for define a Component. all property we don't
 会在模板编译 __之后__(即活动dom已经产生)被调用. 你可以在这里处理一些与dom相关的逻辑　
 <!-- /t -->
 
-#### destory: 
+####destory: 
 
 - type: Function
 
@@ -251,7 +252,7 @@ component.destory();
 
 
 
-#### name: 
+####name: 
 
 
 {
@@ -304,7 +305,7 @@ SuperComponent.component('foo1', Component)
 ```
 
 
-#### events
+####events
 
 - type: Object
 
@@ -326,7 +327,7 @@ Regular.extend({
 ```
 
 
-#### data
+####data
 
 - type: Object
 
@@ -353,7 +354,7 @@ console.log(component.data.prop1) // ==> 1
 <a id="directive"></a>
 
 
-### Component.directive
+###Component.directive
 
 __Usage__
 
@@ -377,7 +378,7 @@ __Arguments__
 
 <a id="filter"></a>
 
-### Component.filter
+###Component.filter
 
 
 __Usage__
@@ -456,7 +457,7 @@ Regular.filter("format", filter)
 
 
 <a href="##" id="two-way-fitler"></a>
-#### {Two-way filter % 双向过滤器}
+####{Two-way filter % 双向过滤器}
 
 {
 Two way filter aim to  help us transform the result when it back to origin data. it is just like filter transform data from origin to result. you can use two-way-fitler to realize some two-way functions. 
@@ -466,7 +467,7 @@ Two way filter aim to  help us transform the result when it back to origin data.
 
 
 
-#### {Builtin Filters %内建过滤器}
+####{Builtin Filters %内建过滤器}
 
 {
 only `json` filter  is native supported by regularjs now.  if you think some filter must be supprted, feel free to [open a issue]().
@@ -475,7 +476,7 @@ only `json` filter  is native supported by regularjs now.  if you think some fil
 }
 
 
-##### json
+#####json
 
 {This is a two-way filter % 这是一个双向过滤器}
 
@@ -502,7 +503,7 @@ component.$update("user|json", "{'name': 'leeluolee', 'age': 10}")
 
 <a href="##" id="event"></a>
 
-### Component.event
+###Component.event
 
 __Usage__
 
@@ -540,7 +541,7 @@ Component.event()
 
 
 <a href="##" name="animation"></a>
-### Component.animation
+###Component.animation
 
 {
 register a animation command, it is completely designed for directive `r-animation`.
@@ -557,7 +558,7 @@ Component.animation(name, factory)
 
 
 <a href="##" name="component"></a>
-### Component.component
+###Component.component
 
 {
 resiter a Component, make it nestable in OtherComponent.
@@ -602,7 +603,7 @@ Component2 = Component.extend({
 
 
 
-### Component.use
+###Component.use
 
 __Usage__
 
@@ -666,7 +667,7 @@ Regular.use(FooPlugin);
 
 
 
-### Regular.config
+###Regular.config
 
 配置一些全局属性, 目前主要可以用来配置模板的自定义开关符号
 
@@ -706,7 +707,7 @@ Regular.config({
 
 
 
-### Regular.expression
+###Regular.expression
 {
 Creating a Expression, almost an internal methods.
 %
@@ -728,7 +729,7 @@ __Return__
 Expression
 
 
-### Regular.parse
+###Regular.parse
 
 {
 Parse a String to AST, almost an internal methods.
@@ -767,7 +768,7 @@ Regular.parse("<h2>{title}</h2>")
 
 
 <a id="instance"></a>
-## {instance API %实例接口}
+##{instance API %实例接口}
 
 
 {
@@ -778,7 +779,7 @@ component即代表组件实例, 注意这些公有都有`$`前缀 意味不建�
 
 
 
-### component.$inject
+###component.$inject
 
 {
 Injects, or inserts the component at a particular place relative to the element.
@@ -892,7 +893,7 @@ you can call `$inject` many times to move component from one place to another.
 
 
 
-### component.$watch
+###component.$watch
 
 {
 Registers a listener callback to be executed whenever the watched expression changes.
@@ -936,7 +937,7 @@ component.$watch("user.name", function(newValue, oldValue){
 
 
 <a name="unwatch"></a>
-### component.$unwatch
+###component.$unwatch
 
 {
 use watchid to unbind a watched Expression. generally speaking, it is rarely used, beacuse all watchers will be automatically destroied by regularjs. 
@@ -964,7 +965,7 @@ component.$update('b', 100); // only alert 'watcher 1'
 ```
 
 <a href="##" id="update"></a>
-### component.$update
+###component.$update
 
 `component.$update` is used to synchronize data and view
 
@@ -1111,7 +1112,7 @@ console.log(component.data.title) // => {title:1};
 
 
 
-### component.$get
+###component.$get
 
 __Usage__
 
@@ -1143,7 +1144,7 @@ __Arguments__
 |expression|Expression|String|{Expression%表达式}|
 
 <a id="refs"></a>
-### component.$refs
+###component.$refs
 
 - type: Object
 
@@ -1170,7 +1171,7 @@ component = new Regular({
 
 > The  less reference the better
 
-### component.$on
+###component.$on
 
 
 Register an `event` handler `fn`.
@@ -1210,7 +1211,7 @@ component.$on({
 
 
 
-### component.$off      
+###component.$off      
 
 __Usage__
 
@@ -1237,7 +1238,7 @@ __Arguments__
 
 
 
-### component.$emit
+###component.$emit
 {
 Emit an event with variable option args.
 %
@@ -1293,7 +1294,7 @@ component.$emit('other');
 
 
 
-### component.$mute
+###component.$mute
 
 {
 you can disable a component, make it away from dirty-check. In most case, you will combine it with [`$inject(false)`](#inject) to remove it from document and make it disable. if you pass `false` to it, it will be actived again with a `digest` to make view and data synchronize.
@@ -1339,7 +1340,7 @@ component.$update();
 ```
 
 
-### component.$bind
+###component.$bind
 
 
 
@@ -1436,7 +1437,7 @@ you may want [the source code of pager ](https://rawgit.com/regularjs/regular/ma
 
 
 
-## {Directive%指令}
+##{Directive%指令}
 
 {
 
@@ -1451,7 +1452,7 @@ Regularjs 提供了一些常用的内置指令
 }
 
 
-### on-[eventName]
+###on-[eventName]
 
 {
 
@@ -1474,7 +1475,7 @@ __Arguments__
 During the compile phase, once regularjs's saw `on-*` in template, regularjs handle it as follow
 
 
-### r-model
+###r-model
 
 very similar to `ng-model` in angular, `r-model` can help you to create two-way binding between data and the form element.
 
@@ -1521,7 +1522,7 @@ you can check the [r-model-example](http://jsfiddle.net/leeluolee/4y25j/) on jsf
 
 
 
-### r-style
+###r-style
 
 `r-style` is an enhancement for plain `style` interpolation.
 
@@ -1557,7 +1558,7 @@ Description
 
 > for examle . `<div style='left: {left}px' r-style='{left: left+"px"}'></div>`
 
-### r-class
+###r-class
 
 simmilar to `r-style`. `r-class` is an enhancement for plain `class` interpolation,
 
@@ -1582,7 +1583,7 @@ Description
 
 > __Warning: just like `r-style`, if there is already an interpolation on `class`, the `r-class` will be overridden__
 
-### r-hide
+###r-hide
 
 __Exmaple__
 
@@ -1595,7 +1596,7 @@ if the Expression `page !== 'home'` is evaluated to true, the `display:none` wil
 
 
 
-### r-html
+###r-html
 
 unescaped interpolation use innerHTML. beware of attack like `xss`.
 
@@ -1606,7 +1607,7 @@ __Example__
 ```
 
 
-### r-animation
+###r-animation
 
 
 {
@@ -1620,10 +1621,10 @@ __Example__
 
 
 
-## {Other%其它}
+##{Other%其它}
 
 
-### Regular.dom
+###Regular.dom
 
 
 {
@@ -1634,7 +1635,7 @@ Regularjs implement some cross-platform method for internal implementation needs
 }
 
 <a id="dom-inject"></a>
-#### Regular.dom.inject(element, refer, direction)
+####Regular.dom.inject(element, refer, direction)
 
 `component.$inject` is based on this method
 
@@ -1648,7 +1649,7 @@ __Arguments__
 
 
 <a id="dom-on"></a>
-#### Regular.dom.on(element, event, handle)
+####Regular.dom.on(element, event, handle)
 
 {
 add a eventlisener on specifed element. the following property on event object has been fixed. you can use them at IE6-8. the `this` in handle is point to element.
@@ -1674,7 +1675,7 @@ dom.on(element, 'click', function(ev){
 
 ```
 
-#### Regular.dom.off(node, event, handle)
+####Regular.dom.off(node, event, handle)
 
 {
 unbind a eventListener
@@ -1683,7 +1684,7 @@ unbind a eventListener
 }
 
 
-#### Regular.dom.addClass(element, className)
+####Regular.dom.addClass(element, className)
 
 {
 addClassName to specified element.
@@ -1694,14 +1695,14 @@ addClassName to specified element.
 
 
 
-#### Regular.dom.delClass(element, className)
+####Regular.dom.delClass(element, className)
 {
 removeClassName at specified element.
 %
 移除节点的某段className
 }
 
-#### Regular.dom.hasClass(element, className)
+####Regular.dom.hasClass(element, className)
 
 {
 detect whether element has some className. 
@@ -1718,7 +1719,7 @@ dom.hasClass(element, 'class1') // => true
 ```
 
 
-#### Regular.dom.text(element[, value])
+####Regular.dom.text(element[, value])
 
 {
 set the content of element to the specified text. if value is not passed, return the combined text contents of element 
@@ -1726,7 +1727,7 @@ set the content of element to the specified text. if value is not passed, return
 根据浏览器和节点, 设置节点的textContent　或　innerText
 }
 
-#### Regular.dom.html(element[, value])
+####Regular.dom.html(element[, value])
 
 {
 set or get the innerHTML of element.
@@ -1736,7 +1737,7 @@ set or get the innerHTML of element.
 
 
 
-#### Regular.dom.attr(element, name [ , value])
+####Regular.dom.attr(element, name [ , value])
 
 {
 Set or Get the value of an attribute for the  element.
