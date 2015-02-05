@@ -308,32 +308,89 @@ console.log(component.data.prop1) // ==> 1
 
 ###Component.directive
 
+
+
+
+Directive is similar to angular's directive, but it is more lightweight( in other words, less powerful __`:)`__ ). you can consider it as enhancement for the particular element.
+
+
+
+
 __Usage__
 
-`Component.directive(name, factory)`
-
-
-<!-- t -->
+__`Component.directive(name, definition)`__
 
 
 __Arguments__
 
-|Param|Type|Detail|
+|param|type|detail|
 |--|--|--|
-|name|String|directive name |
-|factory|Function|  Factory function for creating new eventType |
+|name|String| directive name|
+|definition|Function Object|  directive definition  |
+
+__definition__
 
 
+
+- Function definition(elem, value) :
+  - elem:  the target element
+  - value: the attributeValue. 
+  - this:  point to component self
+
+
+
+
+__Example__ (source code of builtin `r-html` )
+
+
+```javascript
+
+Regular.directive('r-html', function(elem, value){
+  this.$watch(value, function(newValue){
+    elem.innerHTML = newValue
+  })
+})
+
+```
+
+
+
+The directive`r-html` create a unescaped interpolation with innerHTML.
+Beacuse [`$watch`](#watch) accepts both [String] and [Expression] as the first param, so you can use `r-html` in two ways.
+
+
+
+```html
+  <div class='preview' r-html='content'></div>
+  <!-- or -->
+  <div class='preview' r-html={content}></div>
+```
+
+
+
+If the directive need some clean work, you can return a destroy function(e.g. dom related operation) . __but you dont need to `$unwatch` the watcher defined in directive , regularjs record it for you and unwatch it automatically__
+
+
+
+
+__Example__
+
+```javascript
+
+Regular.directive('some-directive', function(elem, value){
+
+  return function destroy(){
+    ... destroy logic
+  }
+})
+
+```
 
 
 <a id="filter"></a>
 
 ###Component.filter
 
-
-__Usage__
-
-`Component.filter(name, factory)`
 
 
 
@@ -342,17 +399,41 @@ regularjs supports the concept of "filters", A "filter chain" is a designer frie
 regularjs also support concept called [__two-way filters__](#two-way-filter) 
 
 
-you can use `Component.filter()` to register a filter, see <a href="?api-en#filter" target=_blank>API:filter</a> for detail
 
+
+__Usage__
+
+`Component.filter(name, factory)`
+
+__Syntax__
+
+`{Expression|filter1: args.. | filter2: args...}`
 
 __Arguments__
 
-|Param|Type|Detail|
+|param|type|detail|
 |--|--|--|
-|name|String| filter name|
-|factory|Function| Factory function for creating new filter |
+|name|string| filter name|
+|factory|function object| factory function for creating new filter |
 
-__Example >__
+
+__factory__
+
+- `factory.get(origin, args...)` [Function]: 
+   
+  An Function to process the data-flow from origin to destnation
+  
+- `factory.set(dest, args...) ` [Function]: 
+   
+  the handle to process the data-flow back from destnation to origin .
+  .
+
+
+
+_If factory is A Function, it will be automately become the factory.get_
+
+
+__Example1 >__ 
 
 dateformat filter
 
@@ -400,44 +481,81 @@ output
 
 
 
-<a href="##" id="two-way-fitler"></a>
+
+
+
+
+
+<a href="#" id="two-way-filter"></a>
 ####Two-way filter 
 
 
-Two way filter aim to  help us transform the result when it back to origin data. it is just like filter transform data from origin to result. you can use two-way-fitler to realize some two-way functions. 
+
+Two way filter aim to  help us transform the result when it back to origin data. it is just like filter transform data from origin to result. 
+
+two-way filter is useful in two-way binding. for example, use two-way filter with directive `r-model`.
 
 
+
+
+take `{[1,2,3]|join: '-'}` for example
+
+filter definition. 
+
+```js
+Regular.filter('join', {
+  //["1","2","3"] - > '1-2-3'
+  get: function(origin, split ){
+    return origin.join( split || "-" );
+  },
+  // **Important **
+  // "1"-"2"-"3" - > ["1","2","3"]
+  set: function(dest, split ){
+    return dest.split( split || "-" );
+  }
+})
+```
+
+```html
+
+{array|json}
+<input r-model={array|join:'-'} >
+
+```
+
+[【 DEMO : two-way filter】](http://codepen.io/leeluolee/pen/jEGJmy)
 
 
 ####Builtin Filters 
-
-
-only `json` filter  is native supported by regularjs now.  if you think some filter must be supprted, feel free to [open a issue]().
-
 
 
 #####json
 
 This is a two-way filter 
 
-```
 __example__
+
+```js
 
 var component = new Regular({
   template: "<h2>{user|json}</h2>"
 })
 
 component.$update("user|json", "{'name': 'leeluolee', 'age': 10}")
+//console.log(user) --> {'user':'leeluolee', 'age': 10}
 
 ```
 
-[【DEMO】]()
+__Only Browser that support JSON API can get the json filter__
 
 
+#####last
 
+last item in array, this is a one-way filter. 
 
-
-
+```html
+{[1,2,3]|last}  ===>  3
+```
 
 
 
@@ -453,149 +571,6 @@ __Usage__
 <!-- t -->
 
 
-```js
-
-Component.event()
-
-```
-
-
-
-<!-- /t -->
-
-
-<a href="##" name="animation"></a>
-###Component.animation
-
-
-register a animation command, it is completely designed for directive `r-animation`.
-
-
-__Usage__
-
-Component.animation(name, factory)
-
-
-
-
-
-<a href="##" name="component"></a>
-###Component.component
-
-
-resiter a Component, make it nestable in OtherComponent.
-
-
-__Usage__
-
-`Component.component(name, factory)`
-
-
-__Arguments__
-
-|Param|Type|Detail|
-|--|--|--|
-|name|String|the name used to insert Component in template|
-|factory| Component | A Component to be register |
-
-
-__Example >__
-
-```js
-
-var Pager = Regular.extend({
-  // other options
-})
-
-Component.component('pager', Pager)
-
-// you can use pager as nested component
-Component2 = Component.extend({
-  template: "<pager></pager>"
-})
-
-```
-
-
-
-
-
-
-
-
-###Component.use
-
-__Usage__
-
-`Component.use(factory)`
-
-
-All methods introduced above(animation, directive,filter, event, implement) will have tightly dependence with particular Component, __but for reusing, a plugin must be Compnent-independent, the connection should be created during the using of plugin__.
-
-so, the general plugin will be written like this:
-
-
-
-
-```javascript
-
-function FooPlugin(Componenet){
-  Component.implement()// implement method
-    .filter()          // define filter
-    .directive()       // define directive
-    .event()           // define custom event
-}
-
-var YourComponent = Regular.extend();
-
-FooPlugin(YourComponent);   // lazy bind
-FooPlugin(Regular);         // lazy bind to globals
-
-```
-
-
-For consistency, every Component have a method named `use` to active a plugin. you can use the `FooPlugin` like this.
-
-
-
-
-```javascript
-
-YourComponent.use(FooPlugin);
-
-// global
-Regular.use(FooPlugin);
-
-```
-
-
-
-###Regular.config
-
-配置一些全局属性, 目前主要可以用来配置模板的自定义开关符号
-
-__Usage__ 
-
-`Regular.config( settings )`
-
-
-
-__Arguments__
-
-
-|Param|Type|Detail|
-|--|--|--|
-|settings.BEGIN|String| OPEN_TAG|
-|settings.END|Function| END_TAG|
-
-
-__Example >__
-
-<!-- t -->
-
-change the TAG from default `{}` to `{{}}`
-
-
 ```javascript
 
 Regular.config({
@@ -605,6 +580,54 @@ Regular.config({
 
 ```
 
+
+<a id="parse"></a>
+###Regular.parse
+
+__Usage__
+
+`Regular.parse(templateString, setting)`
+
+
+Parse a String to AST . you can use it for preparsing rgl template.
+
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|templateString|String| the template going to be parsed |
+|settings.BEGIN|String| OPEN_TAG  (default: '{'|
+|settings.END|String| END_TAG  (default: '}')|
+|settings.stringify|Boolean| whether to stringify the AST  (default: false)|
+
+__Usage__
+
+__Example >__
+
+```javascript
+Regular.parse("<h2>{{page.title + page.desc}}</h2>", {
+  BEGIN: '{{',
+  END: '}}'
+})
+// output
+[
+  {
+    "type": "element",
+    "tag": "h2",
+    "attrs": [],
+    "children": [
+      {
+        "type": "expression",
+        "body": "_d_['page']['title']+'-'+_d_['page']['desc']",
+        "constant": false,
+        "setbody": false
+      }
+    ]
+  }
+]
+
+```
 
 
 ###Regular.expression
@@ -626,41 +649,6 @@ __Return__
 
 Expression
 
-
-###Regular.parse
-
-
-Parse a String to AST, almost an internal methods.
-
-
-
-__Usage__
-
-`Regular.parse( templateString )`
-
-__Example >__
-
-```javascript
-Regular.parse("<h2>{title}</h2>")
-// output
-[
-  {
-    "type": "element",
-    "tag": "h2",
-    "attrs": [],
-    "children": [
-      {
-        "type": "expression",
-        "body": "_d_['page']['title']+'-'+_d_['page']['desc']",
-        "constant": false,
-        "setbody": false
-      }
-    ]
-  }
-]
-
-
-```
 
 
 <a id="instance"></a>
@@ -1455,7 +1443,10 @@ Regularjs implement some cross-platform method for internal implementation needs
 <a id="dom-inject"></a>
 ####Regular.dom.inject(element, refer, direction)
 
+
 `component.$inject` is based on this method
+
+
 
 __Arguments__
 

@@ -1,18 +1,168 @@
 [Improve this page >](https://github.com/regularjs/blog/edit/master/source/_api/_docs/api.md)
 
 
-# Tips
+ Tips
 
 
 This page serves some content that not included by [api](?api-en) and [syntax](?syntax-en), but they all important.
 
 
+# Manage regularjs's template easily
+
+
+在文档的所有例子中，为了方便起见, 都是使用了以下两种方式来管理模板
+
+1. 直接在js中声明模板字符串
+  
+  ```js
+  var Component = Regular.extend({
+    tempalte: "<h2>{title}</h2>"
+  })
+  ```
+
+  当模板非常简单时，这样做确实非常方便，但当模板结构稍微复杂点时, 也可以使用页面的模板容器节点
+2. 引用实现写在页面标签中的内容，如 
+
+  ```javascript
+  var Component = Regular.extend({
+    tempalte: document.querySelector("app")
+  })
+
+  ```
+
+  Where in element `app`:
+
+  ```html
+  <nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container-fluid">
+      <div class="navbar-header">
+      //...
+       </div>
+    </div>
+  </nav>
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-3 col-md-2 sidebar">
+      //...
+      </div>
+    </div>
+  </div>
+  ```
+  这种方式相较于方式1其实有利有弊. 例在于它解决了在js中拼接字符串模板的肮脏行为, 弊则在于模板本身变成了一个“全局”的东西，组件这个统一的整体也被打碎了, 从项目规模庞大后，维护这些散落在页面中的容器节点也会成为随时引爆的导火索
+
+
+除此之外，上述两种解决方案都有一个问题：无法对模板做预解析. 
+
+“是否有解决上述问题的方案呢？” 答案是肯定的. regularjs 提供了市面上最常用的两种开发方式的解决方案: requirejs(AMD) 和 browserify(Commonjs), 
+
+
+## 1 [requirejs-regular](https://github.com/regularjs/requrejs-regular)
+
+__Install__
+
+- `bower install requirejs-regular`
+- `npm install requirejs-regular`
+
+
+__Usage__
+
+使用`rgl!`前缀来标明此资源为regularjs模板
+
+
+__Example__
+
+```js
+
+require.config({
+    paths : {
+        "rgl": '../../rgl',
+        "regularjs": '../../bower_components/regularjs/dist/regular'
+    },
+    rgl: {
+      BEGIN: '{{',
+      END: '}}'
+    }
+
+});
+
+
+require(['rgl!foo.html', 'rgl!foo.html', 'regularjs'], function(foo, haha , Regular){
+
+  Regular.config({
+    END: '}}',
+    BEGIN: '{{'
+  })
+
+    var Foo = Regular.extend({
+      template: foo
+    })
+    var Haha = Regular.extend({
+      template: haha
+    })
+
+
+    new Foo({ 
+      data: {
+        message: "rgl init Component "
+      }
+    }).$inject("app")
+
+    new Haha({
+      data: {
+        message: "text init Component "
+      }
+    }).$inject("app")
+
+
+});
+```
+
+
+__Preparse__
+
+
+## 2 browserify
+
+__Install__
+
+- `npm install regularify`
+
+
+__Usage__
+
+
+__Example__
+
+
+__Preparse__
+
+
+
+_除此之外，对于网易的开发者而言，在NEJ打包工具中已经直接集成了regularjs的模板预解析，有兴趣可以直接在内部询问_
+
+
+
+
+## 3. "You don't use browserify or requirejs?" 
+
+
+
+
+
+
+
+
+
+
+
+
+
 <a id="digest"></a>
-## dirty-check: the secret of data-binding 
+# dirty-check: the secret of data-binding 
 
 事实上，regularjs的数据绑定实现非常接近于angularjs: 都是基于脏检查. 
 
-### Digest phase 
+## Digest phase 
 
 
 
@@ -39,33 +189,264 @@ component.$update();
 
 ```
 
-## Consistent event system
+# Consistent event system
 
 
-Regularjs has a simple Emitter implement that providing `$on`、`$off` and `$emit` we introduced above.
+Event is the most important thing in regularjs. 
 
-event by emitter and dom event use the same process. so, they have a lot in common. 
+Event in regularjs have two types: __Dom Event__ and __Component Event__, let's talk about them  Respectively， and find some similar features between them.
 
 
-
-__Similarities__
-
-- botn of them can be used in template.
+## Dom Event 
 
 
 
-__differences__
+Every attribute on element prefixed with `on-` (e.g `on-click`) will be considered as event binding. you can also use it in delegating way via `delegate-*` (e.g. `delegate-click`)
 
-
-- component event belongs to component and triggered by `component.$emit`.
-  but dom event belongs to particular element, in most case, is triggered by user action, except for [custom event](#event).
-- Object `$event` in template
-  - emitter event: the 2nd param passed into `$emit`.
-  - dom event: a wrapped native [dom event](#dom-on), or the object pass into [`fire`](#event) if the event is a custom event.
+> <h5>tip</h5>
+> In fact, event is a special directive, for it accepts RegExp as the first param.
 
 
 
-__example__
+
+
+### 1.  Basic DOM Event Support 
+
+
+
+you can bind event-handler with `on-xxx` attribute on tag (e.g.  `on-click` `on-mouseover`)
+
+
+
+__Example__:
+
+```html
+<button on-click={count = count + 1}> count+1 </button> <b>{count}</b>,
+```
+
+
+every time you click the button. the `count` will +1.
+
+
+[【DEMO】 >](http://jsfiddle.net/leeluolee/y8PHE)
+
+
+
+
+<a name="custom-event"></a>
+
+### 2.  Register Custom DOM Event  : Component.event
+
+
+__USEAGE__
+
+`Component.event(event, fn)` 
+
+
+
+You can register a custom event which is not native supported by the browser(e.g. `on-tap` `on-hold`).
+
+
+
+__Arguments__
+
+* event: the name of custom event  (no `on-` prefix) 
+* fn(elem, fire)
+  - elem:    attached element 
+  - fire:    the trigger of the custom event. 
+
+
+> <h5>Tips</h5>
+> * similar with directive, if you need some teardown work, you need return a function.
+
+
+
+
+__Example__
+
+
+define a `on-enter` event, handle the keypressing of Enter key .
+
+
+
+```js
+var dom = Regular.dom;
+
+Regular.event('enter', function(elem, fire){
+  function update(ev){
+    if(ev.which == 13){ // ENTER key
+      ev.preventDefault();
+      fire(ev); // if key is enter , we fire the event;
+    }
+  }
+  dom.on(elem, "keypress", update);
+  return function destroy(){ // return a destroy function
+    dom.off(elem, "keypress", update);
+  }
+});
+
+// use in template
+<textarea on-enter={this.submit($event)}></textarea>`
+```
+
+
+see [$event](event) for more information.
+
+
+
+
+### 3.  Proxy or Evaluate .
+
+
+Expreesion and Text is all valid with `on-event`. but they do different logic when event  is triggered.
+
+
+
+
+- Expression (e.g. `on-click={this.remove()}`)
+  
+  once the event fires. Expression will be evalutated, it is similar with angular.
+  
+  __Example__
+  ```html
+    <div on-click={this.remove(index)}>Delte</div>
+  ```
+
+  where in you Component 
+
+  ```javascript
+  var Component = Regular.extend({
+    template:'example',
+    remove: function(index){
+      this.data.list.splice(index ,1);
+      // other logic
+    }
+  })
+
+  ```
+
+  
+  It is the most recommend way to use event.
+  
+  
+
+
+- Non-Expression (e.g. `on-click="remove"`)
+
+  
+  Instead of run Expression directly, if you pass a String, the dom event will be redirected to paticular component event.
+  
+  __Example__
+
+  ```html
+    <div on-click="remove">Delte</div>
+  ```
+
+  then using `$on` to handle event. 
+
+  ```javascript
+  var Component = Regular.extend({
+    template:'example',
+    init: function(){
+      this.$on("remove", function($event){
+          // your logic here
+      })
+    }
+  })
+
+  ```
+
+
+
+### 4. Delegate Event by `delegate-*`
+
+
+
+every `on-*` will call `addEventListener` on element.  sometimes, it is not efficient.
+
+you can use `delegate-` insteadof `on-` to avoid the potential performance issue. regularjs will attach single event on component's parentNode(when `$inject` is called), all delegating-event that defined in component will be processed collectively.
+
+From user perspective, `on-` and `delegate-` is almost the same.
+
+
+__Example__
+
+```html
+<div delegate-click="remove">Delte</div>   //Proxy way via delegate
+<div delegate-click={this.remove()}>Delte</div> // Evaluated way via delagate
+```
+
+
+__Warning__
+
+1. if the component is large in structure. avoid attaching too much events that is `frequencey triggered` (e.g. mouseover) to component.
+2. if the event is a [custom event](custom-event). it need to have the ability to bubble, then the component.parentNode can capture the event. for exampel:  zepto's tap-event [source](https://github.com/madrobby/zepto/blob/master/src/event.jsL274).
+
+
+<a name="$event"></a>
+### 5. `$event`
+
+
+In some cases, you may need the `Event` object, regularjs created an temporary variable`$event` for it, you can use the variable in the Expression.
+
+if the event is custom event, the `$event` is the param you passed in `fire`.
+
+
+__Example__
+
+```javascript
+new Regular({
+  template:
+  "<button on-click={this.add(1, $event)}> count+1 </button> \
+    <b>{count}</b>",
+  data: {count:1}
+  add: function(count, $event){
+    this.data.count += count;
+    alert($event.pageX)
+  }
+}).$inject(document.body);
+```
+
+[DEMO >](http://jsfiddle.net/leeluolee/y8PHE/3/)
+
+
+`$event` has been patched for you already (ie6+ support), you can use the property below.
+
+
+0. origin: element that register the event 
+1. target: 
+2. preventDefault()
+3. stopPropgation
+4. which
+5. pageX
+6. pageY
+7. wheelDelta
+8. event: origin event object.
+
+
+## Component Event 
+
+
+Regularjs has a simple Emitter implement that providing `$on`、`$off` and `$emit` they have been introduced in [api event](?api-en?on).
+
+
+
+
+__Example__
+
+```js
+var component = new Regular;
+component.$on("event1", fn1)// register a listener
+component.$trigger("event1", 1, 2) // trigger event1 with two params
+component.$off("event1", fn1)  // unregister a listener
+```
+
+
+## Similarities
+
+### both of them can be used in template.
+
+__Example__
 
 ```js
 
@@ -83,15 +464,9 @@ var component = new Regular({
 
 ```
 
-__the `$event` trigger by Emitter is the first param passed to `$emit`__.
+### they all accept Interpolation and Non-Interpolation, and perform consistent 
 
-[【DEMO】](##)
-
-
-- both of them can be redirect to another component event. 
-
-__example__
-
+__Example__
 
 ```js
 
@@ -111,12 +486,36 @@ var component = new Regular({
 })
 
 ```
+
+## __Differences__
+
+
+- component event belongs to component and triggered by `component.$emit`.
+  but dom event belongs to particular element, in most case, is triggered by user action, except for [custom event](event).
+- Object `$event` in template
+  - emitter event: the 2nd param passed into `$emit`.
+  - dom event: a wrapped native [dom event](dom-on), or the object pass into [`fire`](event) if the event is a custom event.
+
+
+
+
+__the `$event` trigger by Emitter is the first param passed to `$emit`__.
+
+[【DEMO】](#)
+
+
+- both of them can be redirect to another component event. 
+
+__example__
+
+
+
 ```javascript
 
 
 ```
 
-[【DEMO】](##)
+[【DEMO】](#)
 
 
 
@@ -125,7 +524,7 @@ var component = new Regular({
 
 
 
-## Modular
+# Modular
 
 - multi extending 
 
@@ -147,18 +546,18 @@ alert(Component.filter("format") === factory1) // -> true
 
 ```
 
-## LifeCycle
+# LifeCycle
 
 
 
 
-### when `new Component(options)`
+## when `new Component(options)`
 
 当你实例化组件时，将会发生以下剧情
 
-> 对应的源码来源于[Regularjs.js](https://github.com/regularjs/regular/blob/master/src/Regular.js#L31)
+> 对应的源码来源于[Regularjs.js](https://github.com/regularjs/regular/blob/master/src/Regular.jsL31)
 
-##### 1 options将合并原型中的 [events](#events), data
+#### 1 options将合并原型中的 [events](events), data
 
 ```js
 options = options || {};
@@ -169,7 +568,7 @@ if(this.events) _.extend(options.events, this.events);
 
 ```
 
-##### 2 将options合并到this中
+#### 2 将options合并到this中
 
 由于传入了参数true, 实例化中传入的属性会覆盖原型属性.
 
@@ -178,7 +577,7 @@ _.extend(this, options, true);
 ```
 
 
-##### 3  解析模板
+#### 3  解析模板
 
 模板本身已经被解析过了(AST)，这步跳过.
 
@@ -186,7 +585,7 @@ _.extend(this, options, true);
 if(typeof template === 'string') this.template = new Parser(template).parse();
 ```
 
-##### 4. 根据传入的options.events 注册事件
+#### 4. 根据传入的options.events 注册事件
 
 注册事件，可以让我们无需去实现那生命的方法(init, destory等)
 
@@ -196,7 +595,7 @@ if(this.events){
 }
 ```
 
-##### 5* 调用config函数.
+#### 5* 调用config函数.
 
  一般此函数我们会在config中预处理我们传入的数据
 
@@ -204,7 +603,7 @@ if(this.events){
 this.config && this.config(this.data);
 ```
 
-##### 6* __编译模板__, 触发一次组件脏检查
+#### 6* __编译模板__, 触发一次组件脏检查
 
 这里的脏检查是为了确保组件视图正确,　__到这里我们已经拥有初始化的dom元素__, 你可以通过$refs来获取你标记的.
 
@@ -216,7 +615,7 @@ if(template){
 
 ```
 
-##### 7* __触发`$init`事件，　并调用this.init方法. ____
+#### 7* __触发`$init`事件，　并调用this.init方法. ____
 
 调用init之后我们不会进行自动的脏检查.
 
@@ -228,7 +627,7 @@ if( this.init ) this.init(this.data);
 
 
 
-### when `component.destory()`
+## when `component.destory()`
 
 当销毁组件时，剧情就要简单的多了.
 
@@ -240,16 +639,11 @@ if( this.init ) this.init(this.data);
 
 
 
-## Manage regularjs's template easily
-
-<!-- t -->
 
 
 
 
-
-
-## Animation
+# Animation
 
 
 regularjs's animation is pure declarative, powerful and easily extensible. the animations is chainable and have the ability that connecting other element's animation sequence.
@@ -306,14 +700,14 @@ The Exmaple means:
 
 
 
-### Builtin Command
+## Builtin Command
 
 
 regularjs provide basic commands for implementing common animations.
 
 
 
-#### 1. on: event, mode
+### 1. on: event, mode
 
 
 when particular event is triggered , starting the animation.
@@ -324,13 +718,13 @@ __Arguments__
 
 
 
-#### 2. when: Expression
+### 2. when: Expression
 
 when the specifed Expression is evaluated to true, starting the animation.
 
 
 
-#### 3. class: classes, mode
+### 3. class: classes, mode
 
 
 
@@ -370,7 +764,7 @@ __box2__:
 
 
 
-#### 4. call: Expression
+### 4. call: Expression
   
 evaluated the Expression and enter the digest phase. `call` command can be used to notify other element.
 
@@ -406,7 +800,7 @@ steps as follow:
 
 
 
-#### 5. style: propertyName1 value1, propertyName1 value1 ...
+### 5. style: propertyName1 value1, propertyName1 value1 ...
 
 setStyle and waiting the `transitionend` (if the style trigger the `transition`)
   
@@ -416,7 +810,7 @@ __example__
 <div class='box animated' r-animation=
      "on: click; 
         class:  swing; 
-        style: color #333;
+        style: color 333;
         class: bounceOut;
         style: display none;
       ">style: click me </div>
@@ -430,12 +824,12 @@ you need to add property `transition` to make color fading effect work.
 }
 ```
 
-the example above means: once clicking, swing it.  then set `style.color=#333`(trigger transition)... 
+the example above means: once clicking, swing it.  then set `style.color=333`(trigger transition)... 
 
 
 
 
-#### 6. wait: duration
+### 6. wait: duration
 
 set a timer to delay execution of subsequent steps in the animation queue
 
@@ -464,7 +858,7 @@ __param__
 
 <!--  -->
 
-### Extend Animation
+## Extend Animation
 
 you can extend javascript-based Animation via  `Component.animation(name, handle)`. 
 
@@ -524,5 +918,14 @@ the thing you only need to do is that: when your animation is compelete, call th
 
 
 
+
+
+
+#  Directive or Component 
+
+
+- Directive in regularjs is used to enhance element's ability, it just like a decorator on dom element. 
+- Component doesn't have any relationship with dom element. It is a small mvvm system, it have data, template and mini controller, you can use Component to realize complex function. and they are combinative.
+- All of them are reusable in your application.
 
 

@@ -7,6 +7,7 @@
 
 
 
+
 ## 静态接口
 
 
@@ -320,23 +321,81 @@ console.log(component.data.prop1) // ==> 1
 
 ###Component.directive
 
-__Usage__
-
-`Component.directive(name, factory)`
 
 
 
 设置自定义指令,　类似与Angularjs中的指令, Regularjs可以通过设置指令来增加节点功能. 由于Regularjs本身的组件化思维，以及模板本身已经拥有强大的描述能力，所以指令的功能在这里被弱化。
-<!-- /t -->
+
+
+
+
+__Usage__
+
+__`Component.directive(name, definition)`__
+
 
 __Arguments__
 
-|Param|Type|Detail|
+|param|type|detail|
 |--|--|--|
-|name|String| 指令名称|
-|factory|Function|  创建新的自定义事件 |
+|name|String| 指令名|
+|definition|Function Object|  指令定义 |
+
+__definition__
+
+ 
+
+- Function definition(elem, value) 传入参数如下<br>
+  - elem 绑定的元素节点
+  - value 属性值(可能是字符串或是一个[Expression];
+  - this 这里的this指向component组件本身
 
 
+
+
+__Example__ (source code of builtin `r-html` )
+
+
+```javascript
+
+Regular.directive('r-html', function(elem, value){
+  this.$watch(value, function(newValue){
+    elem.innerHTML = newValue
+  })
+})
+
+```
+
+
+这里由于[$watch](../core/binding.md)同时接受字符串或者Expression, 所以我们可以在模板里传字符串或插值, 最终r-html的效果是一样的
+
+
+
+```html
+  <div class='preview' r-html='content'></div>
+  <!-- or -->
+  <div class='preview' r-html={content}></div>
+```
+
+
+
+如果必要你也可以在函数返回一个destroy函数做指令的销毁工作(比如绑定了节点事件). 需要注意的是, regular中watch数据是不需要进行销毁的, regular会自动清理对应的数据绑定
+
+
+
+
+__Example__
+
+```javascript
+
+Regular.directive('some-directive', function(elem, value){
+
+  return function destroy(){
+    ... destroy logic
+  }
+})
+
+```
 
 
 <a id="filter"></a>
@@ -344,27 +403,47 @@ __Arguments__
 ###Component.filter
 
 
-__Usage__
-
-`Component.filter(name, factory)`
-
 
 
 regularjs 当然也支持普遍存在于模板中的过滤器，过滤器支持链式的多重调用. 
 
-regularjs也支持[__双向过滤__](#two-way-filter)
+regularjs也支持[__双向过滤__](#two-way-filter), 来帮助你解决双向数据流的需求
 
 
 
+__Usage__
+
+`Component.filter(name, factory)`
+
+__Syntax__
+
+`{Expression|filter1: args.. | filter2: args...}`
 
 __Arguments__
 
-|Param|Type|Detail|
+|param|type|detail|
 |--|--|--|
-|name|String| 过滤器名称|
-|factory|Function| 创建新的自定义过滤器|
+|name|string| 过滤器名称|
+|factory|function object| 创建新的自定义过滤器|
 
-__Example >__
+
+__factory__
+
+- `factory.get(origin, args...)` [Function]: 
+   
+  数据从终点到源的处理函数. 
+  
+- `factory.set(dest, args...) ` [Function]: 
+   
+  从最终结果反推到源头的处理函数.
+  .
+
+
+
+_如果传入的factory是函数类型，则自动成为factory.get_
+
+
+__Example1 >__ 
 
 一个简单的日期格式化过滤器
 
@@ -412,44 +491,84 @@ Regular.filter("format", filter)
 
 
 
-<a href="##" id="two-way-fitler"></a>
+
+
+
+
+
+<a href="#" id="two-way-filter"></a>
 #### 双向过滤器
+
+
+
 
 
 双向过滤器主要是帮助我们实现数据的对流, 对任意数据读或写操作时可以进行过滤操作, 与计算属性不同的是，双向过滤器定义是不与具体的数据进行绑定,它是一种可复用的抽象.
 
+双向过滤器如其名，经常会用在双向绑定上， 由于这个特性， r-model 得以与一个数组类型实现双向绑定。 当然你也可以使用它在其它可能有“数据回流”场合，比如[内嵌组件](?syntax-zh#composite)
 
+
+
+
+
+take `{[1,2,3]|join: '-'}` for example
+
+ 过滤器定义
+
+```js
+Regular.filter('join', {
+  //["1","2","3"] - > '1-2-3'
+  get: function(origin, split ){
+    return origin.join( split || "-" );
+  },
+  // **Important **
+  // "1"-"2"-"3" - > ["1","2","3"]
+  set: function(dest, split ){
+    return dest.split( split || "-" );
+  }
+})
+```
+
+```html
+
+{array|json}
+<input r-model={array|join:'-'} >
+
+```
+
+[【 DEMO : two-way filter】](http://codepen.io/leeluolee/pen/jEGJmy)
 
 
 ####内建过滤器
-
-
-如果需要请开一个issue 来描述你的需求, 目前作者没有想到必须支持的过滤器. 而dateformat等常用的，往往需要引入较大的代码量.
-
 
 
 #####json
 
  这是一个双向过滤器
 
-```
 __example__
+
+```js
 
 var component = new Regular({
   template: "<h2>{user|json}</h2>"
 })
 
 component.$update("user|json", "{'name': 'leeluolee', 'age': 10}")
+//console.log(user) --> {'user':'leeluolee', 'age': 10}
 
 ```
 
-[【DEMO】]()
+__Only Browser that support JSON API can get the json filter__
 
 
+#####last
 
+ 获得数组最后一个元素, 这是一个单向过滤器
 
-
-
+```html
+{[1,2,3]|last}  ===>  3
+```
 
 
 
@@ -473,21 +592,6 @@ __Argument__
 |name|String|the custom event name|
 |factory|Function| Factory function for creating event type|
 
-
-__Example >__
-
-当按下ESC时，触发on-exit事件
-<!-- /t -->
-
-```js
-
-Component.event()
-
-```
-
-
-
-<!-- /t -->
 
 
 <a href="##" name="animation"></a>
@@ -622,8 +726,8 @@ __Arguments__
 
 |Param|Type|Detail|
 |--|--|--|
-|settings.BEGIN|String| OPEN_TAG|
-|settings.END|Function| END_TAG|
+|settings.BEGIN|String| OPEN_TAG (default: '{')|
+|settings.END|String| END_TAG (default: '}') |
 
 
 __Example >__
@@ -642,6 +746,54 @@ Regular.config({
 
 ```
 
+
+<a id="parse"></a>
+###Regular.parse
+
+__Usage__
+
+`Regular.parse(templateString, setting)`
+
+
+解析模板字符串为AST, 基本上你不会使用此方法, 你可以使用此方法来预解析你得regularjs模板 
+
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|templateString|String|  要解析的模板字符串|
+|settings.BEGIN|String|  开符号 (default: '{'|
+|settings.END|String|  关符号 (default: '}')|
+|settings.stringify|Boolean|  是否stringify 输出的AST (default: false)|
+
+__Usage__
+
+__Example >__
+
+```javascript
+Regular.parse("<h2>{{page.title + page.desc}}</h2>", {
+  BEGIN: '{{',
+  END: '}}'
+})
+// output
+[
+  {
+    "type": "element",
+    "tag": "h2",
+    "attrs": [],
+    "children": [
+      {
+        "type": "expression",
+        "body": "_d_['page']['title']+'-'+_d_['page']['desc']",
+        "constant": false,
+        "setbody": false
+      }
+    ]
+  }
+]
+
+```
 
 
 ###Regular.expression
@@ -663,41 +815,6 @@ __Return__
 
 Expression
 
-
-###Regular.parse
-
-
-解析模板字符串为AST, 基本上你不会使用此方法。
-
-
-
-__Usage__
-
-`Regular.parse( templateString )`
-
-__Example >__
-
-```javascript
-Regular.parse("<h2>{title}</h2>")
-// output
-[
-  {
-    "type": "element",
-    "tag": "h2",
-    "attrs": [],
-    "children": [
-      {
-        "type": "expression",
-        "body": "_d_['page']['title']+'-'+_d_['page']['desc']",
-        "constant": false,
-        "setbody": false
-      }
-    ]
-  }
-]
-
-
-```
 
 
 <a id="instance"></a>
@@ -1502,14 +1619,17 @@ __Example__
 <a id="dom-inject"></a>
 ####Regular.dom.inject(element, refer, direction)
 
-`component.$inject` is based on this method
+
+`component.$inject` 依赖于此方法
+
+
 
 __Arguments__
 
 |Param|Type|Detail|
 |--|--|--|
 |element|`Node` `false` | 要被插入的节点|
-|refer|`Node` `false` | 参考阶段|
+|refer|`Node` `false` | 参考节点|
 |direction_(optional default:'bottom')_|String| 组件的位置插入目标的位置.　可以是 'top', 'bottom', 'after', or 'before'.|
 
 

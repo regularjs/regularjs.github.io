@@ -148,7 +148,7 @@ with data `{list: ['Add','Update','Delete']}`, output:
 
 
 
-__查看 [Component.filter](?api-zh#filter) 了解更多__
+__regularjs 同时支持一些高阶用法，例如双向过滤器。查看 [Component.filter](?api-zh#filter) 了解更多__
 
 
 
@@ -520,56 +520,6 @@ __resulting html__
 <span class="index">2:c</span>
 <span class="index">3:d</span>
 ```
-
-
-
-
-###注意点
-
-list内部实现会在每次iterate时与angular类似会创建一个新的匿名组件(类似于ng-repeat中创建的子scope), 对外层数据的访问是通过原型继承的方式，所以修改原始类型的数据如字符，将不会对父组件产生影响，你可以通过引用类型的属性或函数调用来避免这个缺陷,　不过幸运的是， `this`仍然指向的是正确的组件.
-
-
-
-__Example >__
-
-```html
-<!-- every iteration , regularjs will create a new Component, 
-  then the `item`, `item_index` can be reserved -->
-
-  
-<div>username: {username}</div>
-<div>user.name: {user.name}</div>
-<p>LIST</p>
-{#list items as item}
-  <p>
-    <a href='#' on-click={name = name + '1'}>
-      name = name + '1': <b>don`t work</b>
-    </a> 
-  </p>
-  <p>
-  <a href='#' on-click={user.name = user.name + '2'}>
-    user.name = user.name + '2': works with Referrence Data Type
-  </a>
-  </p>
-  <p>
-  <a href='#' on-click={this.changename()}> 
-    this.changename(): works by call method
-  </a>
-  </p>
-  <p>
-    <a href='#' on-click={this.data.username= username + "1"}>
-      this.data.name= name + "1": works by `this` 
-    </a>
-  </p>
-
-{/list}
-```
-
-[【DEMO】](http://jsfiddle.net/leeluolee/nKK8D/)
-
-
-
-
 
 ##if/else/elseif
 

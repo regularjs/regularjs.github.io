@@ -58,6 +58,15 @@
   .content pre > code{
     
   }
+  .fix-btn{
+    position: fixed; 
+    right: 20px; top: 80px; background: #fff ;border-radius: 4px; border: 2px solid #2badad; padding: 6px 12px; color: #2badad; 
+    opacity: .4;
+    cursor: pointer;
+  }
+  .fix-btn:hover{
+    opacity: 1;
+  }
 
   </style>
 
@@ -98,14 +107,21 @@
     <div role='flatdoc-content' class='content'></div>
   </div>
 
+  <div class="fix-btn j-switch" style=""></div>
+
+
   <script>
 
+  var current_config;
   function render(config, pushHistory){
     var name  = config.doc + "-" + config.lang;
+    current_config = config
     Flatdoc.run({
       fetcher: Flatdoc.file("docs/" + name + ".md")
     });
     pushHistory && history.pushState({}, "Regularjs Reference","?" + name)
+    $(".j-switch").text(config.lang==="en"? '切换中文': 'switch to English')
+      .attr("data-lang", config.lang);
   }
   function getDocAndLang(search){
     search = search.replace( "?" ,'').split("-");
@@ -124,6 +140,10 @@
   $('.j-toggle').on("click", function(ev){
     ev.preventDefault();
     render( getDocAndLang( this.search ) , true);
+  })
+  $(".j-switch").on("click", function(){
+    current_config.lang = current_config.lang==="en"? 'zh': "en";
+    render(current_config, true)
   })
 
   $(document).on('flatdoc:ready', function() {

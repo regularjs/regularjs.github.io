@@ -161,7 +161,7 @@ with data `{list: ['Add','Update','Delete']}`, output:
 
 
 
-__see [Component.filter](?api-en#filter) for Detail__
+__regularjs is also support advanced usage , like two-way filter,see [Component.filter](?api-en#filter) for Detail__
 
 
 
@@ -533,56 +533,6 @@ __resulting html__
 <span class="index">2:c</span>
 <span class="index">3:d</span>
 ```
-
-
-
-
-###Warning
-
-Every iteration, regularjs create anonymous component to store the `item`, `item_index`, but the data from component has been extended ( based on prototypal inheritance). so, if you directly rewrite the data outside, It will not works. Fortunately,  the `this` in list's section is still pointing to the component outside, so you can use `this` to get the correct component.
-
-
-
-__Example >__
-
-```html
-<!-- every iteration , regularjs will create a new Component, 
-  then the `item`, `item_index` can be reserved -->
-
-  
-<div>username: {username}</div>
-<div>user.name: {user.name}</div>
-<p>LIST</p>
-{#list items as item}
-  <p>
-    <a href='#' on-click={name = name + '1'}>
-      name = name + '1': <b>don`t work</b>
-    </a> 
-  </p>
-  <p>
-  <a href='#' on-click={user.name = user.name + '2'}>
-    user.name = user.name + '2': works with Referrence Data Type
-  </a>
-  </p>
-  <p>
-  <a href='#' on-click={this.changename()}> 
-    this.changename(): works by call method
-  </a>
-  </p>
-  <p>
-    <a href='#' on-click={this.data.username= username + "1"}>
-      this.data.name= name + "1": works by `this` 
-    </a>
-  </p>
-
-{/list}
-```
-
-[【DEMO】](http://jsfiddle.net/leeluolee/nKK8D/)
-
-
-
-
 
 ##if/else/elseif
 

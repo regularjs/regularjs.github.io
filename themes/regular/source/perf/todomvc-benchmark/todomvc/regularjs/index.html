@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>TODOMVC</title>
-  <link rel="stylesheet" href="https://rawgit.com/tastejs/todomvc-common/master/base.css">
+ <link rel="stylesheet" href="https://rawgit.com/tastejs/todomvc-app-css/master/index.css">
 </head>
 <body>
   <div id="todoapp"></div>
@@ -51,10 +51,13 @@
     </footer>
   </script>
       
- <script src="https://rawgit.com/regularjs/regular/0.1.2/dist/regular.min.js"></script>
+ <script src="bower_components/regularjs/dist/regular.js"></script>
 
   <script>
-    
+   Regular.config({
+    END: "}}",
+    BEGIN: "{{"
+   }) 
 
     var TodoApp = Regular.extend({
       template: '#application', // id | template string | preparsed ast
@@ -114,7 +117,7 @@
     }});
 
 
-    todo.inject('#todoapp')
+    todo.$inject('#todoapp')
   </script>
   
 </body>

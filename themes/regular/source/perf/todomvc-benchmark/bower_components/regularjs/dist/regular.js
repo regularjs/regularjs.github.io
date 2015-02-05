@@ -1,7 +1,7 @@
 /**
-@author	leeluolee
-@version	0.1.1
-@homepage	http://regularjs.github.io
+@author leeluolee
+@version  0.3.0
+@homepage http://regularjs.github.io
 */
 ;(function(){
 'use strict';
@@ -209,49 +209,92 @@ require.relative = function(parent) {
   return localRequire;
 };
 require.register("regularjs/src/Regular.js", function(exports, require, module){
+
 var Lexer = require("./parser/Lexer.js");
 var Parser = require("./parser/Parser.js");
-var node = require("./parser/node.js");
 var dom = require("./dom.js");
+var config = require("./config.js");
 var Group = require('./group.js');
 var _ = require('./util');
 var extend = require('./helper/extend.js');
-var Event = require('./helper/event.js');
+var events = require('./helper/event.js');
 var combine = require('./helper/combine.js');
-var walkers = require('./walkers.js');
-var doc = typeof document==='undefined'? {}: document;
+var Watcher = require('./helper/watcher.js');
+var parse = require('./helper/parse.js');
+var filter = require('./helper/filter.js');
+var doc = typeof document==='undefined'? {} : document;
+var env = require('./env.js');
 
+
+/**
+* `Regular` is regularjs's NameSpace and BaseClass. Every Component is inherited from it
+* 
+* @class Regular
+* @module Regular
+* @constructor
+* @param {Object} options specification of the component
+*/
 var Regular = function(options){
-  var node, template, name;
+  var prevRunning = env.isRunning;
+  env.isRunning = true;
+  var node, template;
 
   options = options || {};
   options.data = options.data || {};
+  options.computed = options.computed || {};
+  options.events = options.events || {};
   if(this.data) _.extend(options.data, this.data);
+  if(this.computed) _.extend(options.computed, this.computed);
+  if(this.events) _.extend(options.events, this.events);
+
   _.extend(this, options, true);
+  if(this.$parent){
+     this.$parent._append(this);
+  }
+  this._children = [];
+  this.$refs = {};
 
   template = this.template;
 
-  if(typeof template === 'string' && template.length < 40 && (node = dom.find(template))) {
+  // template is a string (len < 16). we will find it container first
+  if((typeof template === 'string' && template.length < 16) && (node = dom.find(template))) {
     template = node.innerHTML;
   }
-  if(typeof template === 'string') this.template = new Parser(template).parse()
-  this.$watchers = [];
-  this.config && this.config(this.data);
+  // if template is a xml
+  if(template && template.nodeType) template = template.innerHTML;
+  if(typeof template === 'string') this.template = new Parser(template).parse();
+
+  this.computed = handleComputed(this.computed);
   this.$context = this.$context || this;
   this.$root = this.$root || this;
   // if have events
-  if(this.events) this.$on(this.events);
-  if(template){
-    this.group = this.$compile(this.template);
-    this.element = combine.node(this);
+  if(this.events){
+    this.$on(this.events);
   }
 
-  this.$emit({type: 'init', stop: true });
-  if(this.$root===this) this.$update();
+  this.config && this.config(this.data);
+  // handle computed
+  if(template){
+    this.group = this.$compile(this.template, {namespace: options.namespace});
+    combine.node(this);
+  }
+
+
+  if(this.$root === this) this.$update();
+  this.$ready = true;
+  if(this.$context === this) this.$emit("$init");
   if( this.init ) this.init(this.data);
+
+  // @TODO: remove, maybe , there is no need to update after init; 
+  // if(this.$root === this) this.$update();
+  env.isRunning = prevRunning;
 
   // children is not required;
 }
+
+
+var walkers = require('./walkers.js');
+walkers.Regular = Regular;
 
 
 // description
@@ -260,46 +303,49 @@ var Regular = function(options){
 _.extend(Regular, {
   // private data stuff
   _directives: { __regexp__:[] },
-  _components: {},
-  _filters: {},
-  _events: {},
   _plugins: {},
-
-  _exprCache:{},
-
-
+  _protoInheritCache: [ 'directive', 'use'] ,
   __after__: function(supr, o) {
-
-
-    if(o.computed){
-      
-    }
 
     var template;
     this.__after__ = supr.__after__;
 
+    // use name make the component global.
     if(o.name) Regular.component(o.name, this);
+    // this.prototype.template = dom.initTemplate(o)
     if(template = o.template){
       var node, name;
-      if( typeof template === 'string' && template.length < 20 && ( node = dom.find( template )) ){
+      if( typeof template === 'string' && template.length < 16 && ( node = dom.find( template )) ){
         template = node.innerHTML;
         if(name = dom.attr(node, 'name')) Regular.component(name, this);
       }
-      if(typeof template == 'string'){
+
+      if(template.nodeType) template = template.innerHTML;
+
+      if(typeof template === 'string'){
         this.prototype.template = new Parser(template).parse();
       }
     }
+
+    if(o.computed) this.prototype.computed = handleComputed(o.computed);
     // inherit directive and other config from supr
     Regular._inheritConfig(this, supr);
 
   },
   /**
-   * directive's setter and getter
-   * @param  {String|RegExp} name  
-   * @param  {[type]} cfg  [description]
-   * @return {[type]}      [description]
-   */
+   * Define a directive
+   *
+   * @method directive
+   * @return {Object} Copy of ...
+   */  
   directive: function(name, cfg){
+
+    if(_.typeOf(name) === "object"){
+      for(var k in name){
+        if(name.hasOwnProperty(k)) this.directive(k, name[k]);
+      }
+      return this;
+    }
     var type = _.typeOf(name);
     var directives = this._directives, directive;
     if(cfg == null){
@@ -322,17 +368,6 @@ _.extend(Regular, {
     }
     return this
   },
-  filter: function(name, fn){
-    var filters = this._filters;
-    if(fn == null) return filters[name];
-    filters[name] = fn;
-    return this;
-  },
-  component: function(name, Component){
-    if(!Component) return this._components[name];
-    this._components[name] = Component;
-    return this;
-  },
   plugin: function(name, fn){
     var plugins = this._plugins;
     if(fn == null) return plugins[name];
@@ -345,27 +380,51 @@ _.extend(Regular, {
     fn(this, Regular);
     return this;
   },
-  expression: function(expr){
-    // @TODO cache
-    if(typeof expr === 'string'){
-      var expr = expr.trim();
-      expr = this._exprCache[expr] || (this._exprCache[expr] = new Parser(expr,{state: 'JST'}).expression());
+  // config the Regularjs's global
+  config: function(name, value){
+    var needGenLexer = false;
+    if(typeof name === "object"){
+      for(var i in name){
+        // if you config
+        if( i ==="END" || i==='BEGIN' )  needGenLexer = true;
+        config[i] = name[i];
+      }
     }
-    var res = _.touchExpression(expr);
-    return res;
+    if(needGenLexer) Lexer.setup();
   },
-  parse: function(template){
-    return new Parser(template).parse();
-  },
+  expression: parse.expression,
+  parse: parse.parse,
 
   Parser: Parser,
   Lexer: Lexer,
 
+  _addProtoInheritCache: function(name, transform){
+    if( Array.isArray( name ) ){
+      return name.forEach(Regular._addProtoInheritCache);
+    }
+    var cacheKey = "_" + name + "s"
+    Regular._protoInheritCache.push(name)
+    Regular[cacheKey] = {};
+    if(Regular[name]) return;
+    Regular[name] = function(key, cfg){
+      var cache = this[cacheKey];
+
+      if(typeof key === "object"){
+        for(var i in key){
+          if(key.hasOwnProperty(i)) this[name](i, key[i]);
+        }
+        return this;
+      }
+      if(cfg == null) return cache[key];
+      cache[key] = transform? transform(cfg) : cfg;
+      return this;
+    }
+  },
   _inheritConfig: function(self, supr){
 
     // prototype inherit some Regular property
     // so every Component will have own container to serve directive, filter etc..
-    var defs =['use', 'directive', 'event', 'filter', 'component'] 
+    var defs = Regular._protoInheritCache;
     var keys = _.slice(defs);
     keys.forEach(function(key){
       self[key] = supr[key];
@@ -374,27 +433,62 @@ _.extend(Regular, {
     })
     return self;
   }
+
 });
 
 extend(Regular);
-Event.mixTo(Regular)
+
+Regular._addProtoInheritCache("component")
+
+Regular._addProtoInheritCache("filter", function(cfg){
+  return typeof cfg === "function"? {get: cfg}: cfg;
+})
+
+
+events.mixTo(Regular);
+Watcher.mixTo(Regular);
 
 Regular.implement({
-
   init: function(){},
+  config: function(){},
+  destroy: function(){
+    // destroy event wont propgation;
+    if(this.$context === this) this.$emit("$destroy");
+    this.group && this.group.destroy(true);
+    this.group = null;
+    this.parentNode = null;
+    this._watchers = null;
+    this._children = [];
+    var parent = this.$parent;
+    if(parent){
+      var index = parent._children.indexOf(this);
+      parent._children.splice(index,1);
+    }
+    this.$parent = null;
+    this.$root = null;
+    this._handles = null;
+    this.$refs = null;
+  },
+
   /**
    * compile a block ast ; return a group;
    * @param  {Array} parsed ast
    * @param  {[type]} record
    * @return {[type]}
    */
-  $compile: function(ast, record){
+  $compile: function(ast, options){
+    options = options || {};
     if(typeof ast === 'string'){
       ast = new Parser(ast).parse()
     }
-    var records;
+    var preNs = this.__ns__,
+      preExt = this.__ext__,
+      record = options.record, 
+      records;
+    if(options.namespace) this.__ns__ = options.namespace;
+    if(options.extra) this.__ext__ = options.extra;
     if(record) this._record();
-    var group = this._walk(ast);
+    var group = this._walk(ast, options);
     if(record){
       records = this._release();
       var self = this;
@@ -403,34 +497,12 @@ Regular.implement({
         group.ondestroy = function(){ self.$unwatch(records); }
       }
     }
+    if(options.namespace) this.__ns__ = preNs;
+    if(options.extra) this.__ext__ = preExt;
     return group;
   },
-  /**
-   * **tips**: whatever param you passed in $update, after the function called, dirty-check(digest) phase will enter;
-   * 
-   * @param  {Function|String|Expression} path  
-   * @param  {Whatever} value optional, when path is Function, the value is ignored
-   * @return {this}     this 
-   */
-  $update: function(path, value){
-    if(path != null){
-      var type = _.typeOf(path);
-      if( type === 'string' || path.type === 'expression' ){
-        var base = this.data;
-        var path = Regular.expression(path);
-        path.set(this, value);
-      }else if(type === 'function'){
-        path.call(this, this.data);
-      }else{
-        for(var i in path) {
-          if(path.hasOwnProperty(i)){
-            this.data[i] = path[i];
-          }
-        }
-      }
-    };
-    (this.$context || this).$digest();
-  },
+
+
   /**
    * create two-way binding with another component;
    * *warn*: 
@@ -458,7 +530,7 @@ Regular.implement({
    */
   $bind: function(component, expr1, expr2){
     var type = _.typeOf(expr1);
-    if(expr1.type === 'expression' || type == 'string'){
+    if( expr1.type === 'expression' || type === 'string' ){
       this._bind(component, expr1, expr2)
     }else if( type === "array" ){ // multiply same path binding through array
       for(var i = 0, len = expr1.length; i < len; i++){
@@ -481,132 +553,33 @@ Regular.implement({
    * @param  {Regular} component [description]
    * @return {This}    this
    */
-  $unbind: function(component){
+  $unbind: function(){
     // todo
   },
+  $inject: function(node, position, options){
+    var fragment = combine.node(this);
 
-  /**
-   * the whole digest loop ,just like angular, it just a dirty-check loop;
-   * @param  {String} path  now regular process a pure dirty-check loop, but in parse phase, 
-   *                  Regular's parser extract the dependencies, in future maybe it will change to dirty-check combine with path-aware update;
-   * @return {Void}   
-   */
-  $digest: function(path){
-
-
-    if(this.$phase === 'digest') return;
-    this.$phase = 'digest';
-    var dirty = false, n =0;
-    while(dirty = this._digest(path)){
-      n++
-      if(n > 20){ // max loop
-        throw 'there may a circular dependencies in this Component' 
-      }
+    if(node === false) {
+      if(!this._fragContainer)  this._fragContainer = dom.fragment();
+      return this.$inject(this._fragContainer);
     }
-    this.$phase = null;
-  },
-  // watch a expression(parsed or not) 
-  $watch: function(expr, fn, options){
-    options = options || {};
-    if(options === true) options = {deep: true}
-    var uid = _.uid('w_');
-
-    if(this.context){
-      for(var i in context);
-    }
-
-    if(Array.isArray(expr)){
-      // @todo 只需要watch一次
-      var tests = [];
-      for(var i=0,len = expr.length; i < len; i++){
-          tests.push(Regular.expression(expr[i]).get) 
-      }
-      var prev = [];
-      var test = function(context){
-        var equal = true;
-        for(var i =0, len = tests.length; i < len; i++){
-          var splice = tests[i](context);
-          if(!_.equals(splice, prev[i])){
-             equal = false;
-             prev[i] = _.clone(splice);
-          }
-        }
-        return equal? false: prev;
-      }
-    }else{
-      var expr = Regular.expression(expr);
-      var get = expr.get;
-      var constant = expr.constant;
-    }
-    var watcher = { 
-      id: uid, 
-      get: get, 
-      fn: fn, 
-      constant: constant, 
-      force: options.force,
-      test: test,
-      deep: options.deep
-    };
-
-    this.$watchers.push(watcher);
-    this._records && this._records.push(watcher.id);
-    return uid;
-  },
-  // unwatch a watcher
-  $unwatch: function(uid){
-    if(Array.isArray(uid)){
-      for(var i =0, len = uid.length; i < len; i++){
-        this.$unwatch(uid[i]);
-      }
-    }else{
-      var watchers = this.$watchers, watcher, len;
-      if(!uid || !watchers || !(len = watchers.length)) return;
-      for(;len--;){
-        watcher = watchers[len];
-        if(watcher && watcher.id === uid ){
-          watchers.splice(len, 1);
-        }
-      }
-    }
-  },
-  destroy: function(){
-    // destroy event wont propgation;
-    this.$emit({type: 'destroy', stop: true });
-
-    this.group && this.group.destroy();
-    this.group = null;
-    this.element = null;
-    this.$watchers = null;
-    this.$off();
-  },
-  inject: function(node, position){
-    position = position || 'bottom';
-    var firstChild,lastChild, parentNode, next;
-    var fragment = this.element || combine.node(this);
     if(typeof node === 'string') node = dom.find(node);
-    if(!node) throw 'injected node is not found'
-    if(!fragment) return;
-    switch(position){
-      case 'bottom':
-        node.appendChild(fragment)
-        break;
-      case 'top':
-        if(firstChild = node.firstChild){
-          node.insertBefore(fragment, node.firstChild)
-        }else{
-          node.appendChild(fragment);
-        }
-        break;
-      case 'after':
-        if(next = node.nextSibling){
-          next.parentNode.insertBefore(fragment, next);
-        }else{
-          next.parentNode.appendChild(fragment);
-        }
-        break;
-      case 'before':
-        node.parentNode.insertBefore(fragment, node);
-    }
+    if(!node) throw 'injected node is not found';
+    if(!fragment) return this;
+    dom.inject(fragment, node, position);
+    this.$emit("$inject", node);
+    this.parentNode = Array.isArray(fragment)? fragment[0].parentNode: fragment.parentNode;
+    return this;
+  },
+  $mute: function(isMute){
+
+    isMute = !!isMute;
+
+    var needupdate = isMute === false && this._mute;
+
+    this._mute = !!isMute;
+
+    if(needupdate) this.$update();
     return this;
   },
   // private bind logic
@@ -614,19 +587,21 @@ Regular.implement({
 
     var self = this;
     // basic binding
+
     if(!component || !(component instanceof Regular)) throw "$bind() should pass Regular component as first argument";
-    if(!expr1) throw "$bind() should as least pass one expression to bind";
-    expr1 = Regular.expression(expr1);
+    if(!expr1) throw "$bind() should  pass as least one expression to bind";
 
     if(!expr2) expr2 = expr1;
-    else expr2 = Regular.expression(expr2);
+
+    expr1 = parse.expression( expr1 );
+    expr2 = parse.expression( expr2 );
 
     // set is need to operate setting ;
     if(expr2.set){
-      var wid1 = this.$watch(expr1, function(value){
+      var wid1 = this.$watch( expr1, function(value){
         component.$update(expr2, value)
       });
-      component.$on('destroy', function(){
+      component.$on('$destroy', function(){
         self.$unwatch(wid1)
       })
     }
@@ -635,122 +610,194 @@ Regular.implement({
         self.$update(expr1, value)
       });
       // when brother destroy, we unlink this watcher
-      this.$on('destroy', component.$unwatch.bind(component,wid2))
+      this.$on('$destroy', component.$unwatch.bind(component,wid2))
     }
     // sync the component's state to called's state
     expr2.set(component, expr1.get(this));
   },
-
-  // private digest logic
-  _digest: function(path){
-    // if(this.context) return this.context.$digest();
-
-    this.$emit('digest');
-    var watchers = this.$watchers;
-
-    if(!watchers || !watchers.length) return;
-    var dirty = false;
-
-    for(var i = 0, len = watchers.length;i<len; i++){
-      var watcher = watchers[i];
-      if(!watcher) continue;
-      if(watcher.test) {
-        var result = watcher.test(this);
-        if(result){
-          dirty = true;
-          watcher.fn.apply(this,result)
-        }
-        continue;
-      }
-      var now = watcher.get(this);
-      var last = watcher.last;
-      // if(now && now.length )debugger
-      var eq = true;
-      if(_.typeOf(now) == 'object' && watcher.deep){
-        if(!watcher.last){
-           eq = false;
-         }else{
-          for(var j in now){
-            if(watcher.last[j] !== now[j]){
-              eq = false;
-              break;
-            }
-          }
-          if(eq !== false){
-            for(var j in watcher.last){
-              if(watcher.last[j] !== now[j]){
-                eq = false;
-                break;
-              }
-            }
-          }
-        }
-      }else{
-        eq = _.equals(now, watcher.last);
-      }
-      if(eq === false || watcher.force){
-        eq = false;
-        watcher.force = null;
-
-        watcher.fn.call(this, now, watcher.last);
-        if(typeof now !== 'object'){
-          watcher.last = _.clone(now);
-        }else{
-          watcher.last = now;
-        }
-      }else{
-        if(_.typeOf(eq)=='array' && eq.length){
-          watcher.fn.call(this, now, eq);
-          watcher.last = _.clone(now);
-        }else{
-          eq = true;
-        }
-      }
-      if(eq !== true) dirty = true;
-      if(watcher.constant){
-         watchers.splice(i, 1);
-      }
-    }
-
-    if(dirty) this.$emit('update');
-    return dirty;
-  },
-
-
-  _record: function(){
-    this._records = [];
-  },
-  _release: function(){
-    var _records = this._records;
-    this._records = null;
-    return _records;
-  },
-  _walk: function(ast){
-    if(_.typeOf(ast) === 'array'){
+  _walk: function(ast, arg1){
+    if( _.typeOf(ast) === 'array' ){
       var res = [];
+
       for(var i = 0, len = ast.length; i < len; i++){
-        res.push(this._walk(ast[i]));
+        res.push( this._walk(ast[i], arg1) );
       }
+
       return new Group(res);
     }
     if(typeof ast === 'string') return doc.createTextNode(ast)
-    return walkers[ast.type || "default"].call(this, ast);
+    return walkers[ast.type || "default"].call(this, ast, arg1);
+  },
+  _append: function(component){
+    this._children.push(component);
+    component.$root = this.$root;
+    component.$parent = this;
+  },
+  _handleEvent: function(elem, type, value, attrs){
+    var Component = this.constructor,
+      fire = typeof value !== "function"? _.handleEvent.call( this, value, type ) : value,
+      handler = Component.event(type), destroy;
+
+    if ( handler ) {
+      destroy = handler.call(this, elem, fire, attrs);
+    } else {
+      dom.on(elem, type, fire);
+    }
+    return handler ? destroy : function() {
+      dom.off(elem, type, fire);
+    }
+  },
+  // 1. 用来处理exprBody -> Function
+  // 2. list里的循环
+  _touchExpr: function(expr){
+    var  rawget, ext = this.__ext__, touched = {};
+    if(expr.type !== 'expression' || expr.touched) return expr;
+    rawget = expr.get || (expr.get = new Function(_.ctxName, _.extName , _.prefix+ "return (" + expr.body + ")"));
+    touched.get = !ext? rawget: function(context){
+      return rawget(context, ext)
+    }
+
+    if(expr.setbody && !expr.set){
+      var setbody = expr.setbody;
+      expr.set = function(ctx, value, ext){
+        expr.set = new Function(_.ctxName, _.setName , _.extName, _.prefix + setbody);          
+        return expr.set(ctx, value, ext);
+      }
+      expr.setbody = null;
+    }
+    if(expr.set){
+      touched.set = !ext? expr.set : function(ctx, value){
+        return expr.set(ctx, value, ext);
+      }
+    }
+    _.extend(touched, {
+      type: 'expression',
+      touched: true,
+      once: expr.once || expr.constant
+    })
+    return touched
   },
   // find filter
-  _f: function(name){
+  _f_: function(name){
     var Component = this.constructor;
     var filter = Component.filter(name);
-    if(typeof filter !== 'function') throw 'filter ' + name + 'is undefined';
+    if(!filter) throw 'filter ' + name + ' is undefined';
     return filter;
+  },
+  // simple accessor get
+  _sg_:function(path, defaults, ext){
+    if(typeof ext !== 'undefined'){
+      // if(path === "demos")  debugger
+      var computed = this.computed,
+        computedProperty = computed[path];
+      if(computedProperty){
+        if(computedProperty.type==='expression' && !computedProperty.get) this._touchExpr(computedProperty);
+        if(computedProperty.get)  return computedProperty.get(this);
+        else _.log("the computed '" + path + "' don't define the get function,  get data."+path + " altnately", "error")
+      }
+    }
+    if(typeof defaults === "undefined" || typeof path == "undefined" ) return undefined;
+    return (ext && typeof ext[path] !== 'undefined')? ext[path]: defaults[path];
+
+  },
+  // simple accessor set
+  _ss_:function(path, value, data , op, computed){
+    var computed = this.computed,
+      op = op || "=", prev, 
+      computedProperty = computed? computed[path]:null;
+
+    if(op !== '='){
+      prev = computedProperty? computedProperty.get(this): data[path];
+      switch(op){
+        case "+=":
+          value = prev + value;
+          break;
+        case "-=":
+          value = prev - value;
+          break;
+        case "*=":
+          value = prev * value;
+          break;
+        case "/=":
+          value = prev / value;
+          break;
+        case "%=":
+          value = prev % value;
+          break;
+      }
+    }
+    if(computedProperty) {
+      if(computedProperty.set) return computedProperty.set(this, value);
+      else _.log("the computed '" + path + "' don't define the set function,  assign data."+path + " altnately", "error" )
+    }
+    data[path] = value;
+    return value;
   }
 });
 
+Regular.prototype.inject = function(){
+  _.log("use $inject instead of inject", "error");
+  this.$inject.apply(this, arguments);
+}
+
+
+// only one builtin filter
+
+Regular.filter(filter);
+
 module.exports = Regular;
+
+
+
+var handleComputed = (function(){
+  // wrap the computed getter;
+  function wrapGet(get){
+    return function(context){
+      var ctx = context.$context;
+      return get.call(ctx, ctx.data );
+    }
+  }
+  // wrap the computed setter;
+  function wrapSet(set){
+    return function(context, value){
+      var ctx = context.$context;
+      set.call( ctx, value, ctx.data );
+      return value;
+    }
+  }
+
+  return function(computed){
+    if(!computed) return;
+    var parsedComputed = {}, handle, pair, type;
+    for(var i in computed){
+      handle = computed[i]
+      type = typeof handle;
+
+      if(handle.type === 'expression'){
+        parsedComputed[i] = handle;
+        continue;
+      }
+      if( type === "string" ){
+        parsedComputed[i] = parse.expression(handle)
+      }else{
+        pair = parsedComputed[i] = {type: 'expression'};
+        if(type === "function" ){
+          pair.get = wrapGet(handle);
+        }else{
+          if(handle.get) pair.get = wrapGet(handle.get);
+          if(handle.set) pair.set = wrapSet(handle.set);
+        }
+      } 
+    }
+    return parsedComputed;
+  }
+})();
 
 });
 require.register("regularjs/src/util.js", function(exports, require, module){
 require('./helper/shim.js');
 var _  = module.exports;
+var entities = require('./helper/entities.js');
 var slice = [].slice;
 var o2str = ({}).toString;
 var win = typeof window !=='undefined'? window: global;
@@ -767,19 +814,20 @@ _.uid = (function(){
 _.varName = '_d_';
 _.setName = '_p_';
 _.ctxName = '_c_';
+_.extName = '_e_';
 
+_.rWord = /^[\$\w]+$/;
+_.rSimpleAccessor = /^[\$\w]+(\.[\$\w]+)*$/;
 
-_.nextTick = typeof setImmediate === 'function'
-  ? setImmediate.bind(win) 
-  : function(callback) {
+_.nextTick = typeof setImmediate === 'function'? 
+  setImmediate.bind(win) : 
+  function(callback) {
     setTimeout(callback, 0) 
   }
 
 
-var prefix =  "var " + _.ctxName + "=context.$context||context;" + "var " + _.varName + "=context.data;";
 
-
-_.host = "data";
+_.prefix = "var " + _.varName + "=" + _.ctxName + ".data;" +  _.extName  + "=" + _.extName + "||'';";
 
 
 _.slice = function(obj, start, end){
@@ -792,7 +840,7 @@ _.slice = function(obj, start, end){
 }
 
 _.typeOf = function (o) {
-  return o == null ? String(o) : ({}).toString.call(o).slice(8, -1).toLowerCase();
+  return o == null ? String(o) : o2str.call(o).slice(8, -1).toLowerCase();
 }
 
 
@@ -893,17 +941,17 @@ _.trackErrorPos = (function (){
 })();
 
 
-var ignoredRef = /\(\?\!|\(\?\:|\?\=/g;
+var ignoredRef = /\((\?\!|\?\:|\?\=)/g;
 _.findSubCapture = function (regStr) {
   var left = 0,
     right = 0,
     len = regStr.length,
-    ignored = regStr.match(ignoredRef); //忽略非捕获匹配
+    ignored = regStr.match(ignoredRef); // ignored uncapture
   if(ignored) ignored = ignored.length
   else ignored = 0;
   for (; len--;) {
     var letter = regStr.charAt(len);
-    if (len === 0 || regStr.charAt(len - 1) !== "\\" || regStr.charAt(len+1) !== "?") { //不包括转义括号
+    if (len === 0 || regStr.charAt(len - 1) !== "\\" ) { 
       if (letter === "(") left++;
       if (letter === ")") right++;
     }
@@ -913,31 +961,39 @@ _.findSubCapture = function (regStr) {
 };
 
 
-_.escapeRegExp = function(string){// Credit: XRegExp 0.6.1 (c) 2007-2008 Steven Levithan <http://stevenlevithan.com/regex/xregexp/> MIT License
-  return string.replace(/[-[\]{}()*+?.\\^$|,#\s]/g, function(match){
+_.escapeRegExp = function( str){// Credit: XRegExp 0.6.1 (c) 2007-2008 Steven Levithan <http://stevenlevithan.com/regex/xregexp/> MIT License
+  return str.replace(/[-[\]{}()*+?.\\^$|,#\s]/g, function(match){
     return '\\' + match;
   });
 };
 
 
+var rEntity = new RegExp("&(" + Object.keys(entities).join('|') + ');', 'gi');
+
+_.convertEntity = function(chr){
+
+  return ("" + chr).replace(rEntity, function(all, capture){
+    return String.fromCharCode(entities[capture])
+  });
+
+}
 
 
 // simple get accessor
 
 _.createObject = function(o, props){
-    function foo() {}
-    foo.prototype = o;
-    var res = new foo;
+    function Foo() {}
+    Foo.prototype = o;
+    var res = new Foo;
     if(props) _.extend(res, props);
     return res;
 }
 
 _.createProto = function(fn, o){
-    function foo() { this.constructor = fn;}
-    foo.prototype = o;
-    return (fn.prototype = new foo());
+    function Foo() { this.constructor = fn;}
+    Foo.prototype = o;
+    return (fn.prototype = new Foo());
 }
-
 
 
 /**
@@ -945,14 +1001,14 @@ clone
 */
 _.clone = function clone(obj){
     var type = _.typeOf(obj);
-    if(type == 'array'){
+    if(type === 'array'){
       var cloned = [];
       for(var i=0,len = obj.length; i< len;i++){
         cloned[i] = obj[i]
       }
       return cloned;
     }
-    if(type == 'object'){
+    if(type === 'object'){
       var cloned = {};
       for(var i in obj) if(obj.hasOwnProperty(i)){
         cloned[i] = obj[i];
@@ -1016,14 +1072,14 @@ var ld = (function(){
       var edits = [];
       var current = matrix[i][j];
       while(i>0 || j>0){
-      // 最后一列
-        if (i == 0) {
+      // the last line
+        if (i === 0) {
           edits.unshift(3);
           j--;
           continue;
         }
-        // 最后一行
-        if (j == 0) {
+        // the last col
+        if (j === 0) {
           edits.unshift(2);
           i--;
           continue;
@@ -1034,12 +1090,12 @@ var ld = (function(){
 
         var min = Math.min(north, west, northWest);
 
-        if (min == west) {
+        if (min === west) {
           edits.unshift(2); //delete
           i--;
           current = west;
-        } else if (min == northWest ) {
-          if (northWest == current) {
+        } else if (min === northWest ) {
+          if (northWest === current) {
             edits.unshift(0); //no change
           } else {
             edits.unshift(1); //update
@@ -1063,7 +1119,7 @@ var ld = (function(){
 
       for(var i=0;i<edits.length;i++){
         if(edits[i] > 0 ){ // NOT LEAVE
-          if(step.index == null){
+          if(step.index === null){
             step.index = m;
           }
         } else { //LEAVE
@@ -1163,8 +1219,8 @@ _.cache = function(max){
       if (keys.length > this.max) {
         cache[keys.shift()] = undefined;
       }
-      // 只有非undefined才可以
-      if(cache[key] == undefined){
+      // 
+      if(cache[key] === undefined){
         keys.push(key);
       }
       cache[key] = value;
@@ -1181,24 +1237,54 @@ _.cache = function(max){
   };
 }
 
-_.touchExpression = function(expr){
-  if(expr.type === 'expression'){
-    if(!expr.get){
-      expr.get = new Function("context", prefix + "return (" + expr.body + ")");
-      expr.body = null;
-      if(expr.setbody){
-        expr.set = function(ctx, value){
-          if(expr.setbody){
-            expr.set = new Function('context', _.setName ,  prefix + expr.setbody);
-            expr.setbody = null;
-          }
-          return expr.set(ctx, value);
-        }
-      }
+// // setup the raw Expression
+// _.touchExpression = function(expr){
+//   if(expr.type === 'expression'){
+//   }
+//   return expr;
+// }
+
+
+// handle the same logic on component's `on-*` and element's `on-*`
+// return the fire object
+_.handleEvent = function(value, type ){
+  var self = this, evaluate;
+  if(value.type === 'expression'){ // if is expression, go evaluated way
+    evaluate = value.get;
+  }
+  if(evaluate){
+    return function fire(obj){
+      self.data.$event = obj;
+      var res = evaluate(self);
+      if(res === false && obj && obj.preventDefault) obj.preventDefault();
+      delete self.data.$event;
+      self.$update();
+    }
+  }else{
+    return function fire(){
+      var args = slice.call(arguments)      
+      args.unshift(value);
+      self.$emit.apply(self.$context, args);
+      self.$update();
     }
   }
-  return expr;
 }
+
+// only call once
+_.once = function(fn){
+  var time = 0;
+  return function(){
+    if( time++ === 0) fn.apply(this, arguments);
+  }
+}
+
+
+
+_.log = function(msg, type){
+  if(typeof console !== "undefined")  console[type || "log"](msg);
+}
+
+
 
 
 //http://www.w3.org/html/wg/drafts/html/master/single-page.html#void-elements
@@ -1209,12 +1295,16 @@ _.isFalse - function(){return false}
 _.isTrue - function(){return true}
 
 
+_.assert = function(test, msg){
+  if(!test) throw msg;
+}
 
 
 });
 require.register("regularjs/src/walkers.js", function(exports, require, module){
 var node = require("./parser/node.js");
 var dom = require("./dom.js");
+var animate = require("./helper/animate.js");
 var Group = require('./group.js');
 var _ = require('./util');
 var combine = require('./helper/combine.js');
@@ -1222,63 +1312,70 @@ var combine = require('./helper/combine.js');
 var walkers = module.exports = {};
 
 walkers.list = function(ast){
-  var placeholder = document.createComment("Regular list");
-  // proxy Component to implement list item, so the behaviar is similar with angular;
-  var Section =  Regular.extend( { 
-    template: ast.body, 
-    $context: this.$context, 
-  });
-  Regular._inheritConfig(Section, this.constructor);
 
-  var fragment = dom.fragment();
-  fragment.appendChild(placeholder);
+  var Regular = walkers.Regular;  
+  var placeholder = document.createComment("Regular list"),
+    namespace = this.__ns__,
+    extra = this.__ext__;
+  // proxy Component to implement list item, so the behaviar is similar with angular;
+  // var Section =  Regular.extend( { 
+  //   template: ast.body,
+  //   $context: this.$context,
+  //   // proxy the event to $context
+  //   $on: this.$context.$on.bind(this.$context),
+  //   $off: this.$context.$off.bind(this.$context),
+  //   $emit: this.$context.$emit.bind(this.$context)
+  // });
+  // Regular._inheritConfig(Section, this.constructor);
+
+  // var fragment = dom.fragment();
+  // fragment.appendChild(placeholder);
   var self = this;
   var group = new Group();
+  group.push(placeholder);
   var indexName = ast.variable + '_index';
   var variable = ast.variable;
-  // group.push(placeholder);
-
-
-
 
   function update(newValue, splices){
+    newValue = newValue || [];
     if(!splices || !splices.length) return;
     var cur = placeholder;
-    var m = 0, len=newValue.length,
+    var m = 0, len = newValue.length,
       mIndex = splices[0].index;
 
-    for(var i=0; i < splices.length; i++){ //init
+    for(var i = 0; i < splices.length; i++){ //init
       var splice = splices[i];
-      var index = splice.index;
+      var index = splice.index; // beacuse we use a comment for placeholder
 
-      for(var k=m; k<index; k++){ // no change
-        var sect = group.get(k);
+      for(var k = m; k < index; k++){ // no change
+        var sect = group.get( k + 1 );
         sect.data[indexName] = k;
       }
-      for(var j = 0,jlen = splice.removed.length; j< jlen; j++){ //removed
-        var removed = group.children.splice( index, 1)[0];
-        // var removed = group.children.splice(j,1)[0];
-        var parent = removed.$parent
-        removed.destroy();
+      for(var j = 0, jlen = splice.removed.length; j< jlen; j++){ //removed
+        var removed = group.children.splice( index + 1, 1)[0];
+        removed.destroy(true);
       }
 
-      for(var o=index; o < index + splice.add; o++){ //add
+      for(var o = index; o < index + splice.add; o++){ //add
         // prototype inherit
         var item = newValue[o];
-        var data = _.createObject(self.data);
+        var data = {};
         data[indexName] = o;
         data[variable] = item;
 
-        var section = new Section({data: data });
-
-        var update = section.$digest.bind(section);
-
-        self.$on('digest', update);
-        section.$on('destroy', self.$off.bind(self, 'digest', update));
+        _.extend(data, extra);
+        var section = self.$compile(ast.body, {
+          extra: data,
+          namespace:namespace
+        })
+        section.data = data;
         // autolink
-        var insert = o !== 0 && group.children[o-1]? combine.last(group.get(o-1)) : placeholder;
-        insert.parentNode.insertBefore(combine.node(section), insert.nextSibling);
-        group.children.splice(o , 0, section);
+        var insert =  combine.last(group.get(o));
+        if(insert.parentNode){
+          animate.inject(combine.node(section),insert, 'after');
+        }
+        // insert.parentNode.insertBefore(combine.node(section), insert.nextSibling);
+        group.children.splice( o + 1 , 0, section);
       }
       m = index + splice.add - splice.removed.length;
       m  = m < 0? 0 : m;
@@ -1286,229 +1383,296 @@ walkers.list = function(ast){
     }
     if(m < len){
       for(var i = m; i < len; i++){
-        var pair = group.get(i);
+        var pair = group.get(i + 1);
         pair.data[indexName] = i;
       }
     }
   }
 
-
-  var watchid = this.$watch(ast.sequence, update);
-
-  return {
-    node: function(){
-      return fragment;
-    },
-    group: group,
-    destroy: function(){
-      group.destroy();
-
-      dom.remove(placeholder);
-      if(watchid) self.$unwatch(watchid);
-    }
-  }
+  this.$watch(ast.sequence, update, { init: true });
+  return group;
 }
 
+// {#include }
 walkers.template = function(ast){
   var content = ast.content, compiled;
-  var placeholder = document.createComment('template');
-  var compiled;
+  var placeholder = document.createComment('inlcude');
+  var compiled, namespace = this.__ns__, extra = this.__ext__;
   // var fragment = dom.fragment();
   // fragment.appendChild(placeholder);
+  var group = new Group();
+  group.push(placeholder);
   if(content){
     var self = this;
-
     this.$watch(content, function(value){
-      if(compiled) compiled.destroy();
-      this._record()
-      compiled = self.$compile(value, true); 
-      var records = this._release();
-      node = combine.node(compiled);
-      placeholder.parentNode && placeholder.parentNode.insertBefore( node, placeholder );
+      if( compiled = group.get(1)){
+        compiled.destroy(true); 
+        group.children.pop();
+      }
+      group.push( compiled =  self.$compile(value, {record: true, namespace: namespace, extra: extra}) ); 
+      if(placeholder.parentNode) animate.inject(combine.node(compiled), placeholder, 'before')
+    }, {
+      init: true
     });
   }
-  return {
-    node: function(){
-      return placeholder;
-    },
-    last: function(){
-      return compiled.last();
-    },
-    destroy: function(){
-      compiled && compiled.destroy();
-    }
-  }
+  return group;
 };
 
 
-walkers['if'] = function(ast){
+// how to resolve this problem
+var ii = 0;
+walkers['if'] = function(ast, options){
+  var self = this, consequent, alternate, extra = this.__ext__;
+  if(options && options.element){ // attribute inteplation
+    var update = function(nvalue){
+      if(!!nvalue){
+        if(alternate) combine.destroy(alternate)
+        if(ast.consequent) consequent = self.$compile(ast.consequent, {record: true, element: options.element , extra:extra});
+      }else{
+        if(consequent) combine.destroy(consequent)
+        if(ast.alternate) alternate = self.$compile(ast.alternate, {record: true, element: options.element, extra: extra});
+      }
+    }
+    this.$watch(ast.test, update, { force: true });
+    return {
+      destroy: function(){
+        if(consequent) combine.destroy(consequent);
+        else if(alternate) combine.destroy(alternate);
+      }
+    }
+  }
+
+
   var test, consequent, alternate, node;
-  var placeholder = document.createComment("Regular if");
-  var fragment = dom.fragment();
-  fragment.appendChild(placeholder);
+  var placeholder = document.createComment("Regular if" + ii++);
+  var group = new Group();
+  group.push(placeholder);
+  var preValue = null, namespace= this.__ns__;
 
-  var self = this;
-  function update(nvalue, old){
-    if(!!nvalue){ //true
-      if(consequent) return;
-      consequent = self.$compile( ast.consequent , true)
-      node = combine.node(consequent); //return group
-      if(alternate){ alternate.destroy() };
-      alternate = null;
-      // @TODO
-      placeholder.parentNode && placeholder.parentNode.insertBefore( node, placeholder );
+
+  var update = function (nvalue, old){
+    var value = !!nvalue;
+    if(value === preValue) return;
+    preValue = value;
+    if(group.children[1]){
+      group.children[1].destroy(true);
+      group.children.pop();
+    }
+    if(value){ //true
+      if(ast.consequent && ast.consequent.length){
+        consequent = self.$compile( ast.consequent , {record:true, namespace: namespace, extra:extra })
+        // placeholder.parentNode && placeholder.parentNode.insertBefore( node, placeholder );
+        group.push(consequent);
+        if(placeholder.parentNode){
+          animate.inject(combine.node(consequent), placeholder, 'before');
+        }
+      }
     }else{ //false
-      if(alternate) return;
-      if(consequent){ consequent.destroy(); }
-      consequent = null;
-      if(ast.alternate) alternate = self.$compile(ast.alternate, true);
-      node = combine.node(alternate);
-      placeholder.parentNode && placeholder.parentNode.insertBefore( node, placeholder );
+      if(ast.alternate && ast.alternate.length){
+        alternate = self.$compile(ast.alternate, {record:true, namespace: namespace, extra:extra});
+        group.push(alternate);
+        if(placeholder.parentNode){
+          animate.inject(combine.node(alternate), placeholder, 'before');
+        }
+      }
     }
   }
-  this.$watch(ast.test, update, {force: true});
+  this.$watch(ast.test, update, {force: true, init: true});
 
-  return {
-    node: function(){
-      return fragment;
-    },
-    last: function(){
-      var group = consequent || alternate;
-      return group && group.last();
-    },
-    destroy: function destroy(){
-      if(alternate) alternate.destroy();
-      if(consequent) consequent.destroy();
-      dom.remove(placeholder);
-    }
-  }
+  return group;
 }
 
 
 walkers.expression = function(ast){
   var node = document.createTextNode("");
-  var watchid = this.$watch(ast, function(newval){
-    dom.text(node, "" + (newval == null? "": String(newval)));
+  ast = this._touchExpr(ast);
+  this.$watch(ast, function(newval){
+    dom.text(node, "" + (newval == null? "": "" + newval) );
   })
   return node;
 }
 walkers.text = function(ast){
-  var node = document.createTextNode(ast.text);
+  var node = document.createTextNode(_.convertEntity(ast.text));
   return node;
 }
 
 
+
 var eventReg = /^on-(.+)$/
 
+/**
+ * walkers element (contains component)
+ */
 walkers.element = function(ast){
   var attrs = ast.attrs, 
     component, self = this,
     Constructor=this.constructor,
     children = ast.children,
+    namespace = this.__ns__, ref, group, 
+    extra = this.__ext__,
+    scope,
     Component = Constructor.component(ast.tag);
 
 
-  if(children && children.length){
-    var group = this.$compile(children);
-  }
-  // make the directive after attribute
-  attrs.sort(function(a, b){
-    var da = Constructor.directive(a.name);
-    var db = Constructor.directive(b.name);
+  if(ast.tag === 'svg') var namespace = "svg";
 
-    if(!db) return !da? 0: 1;
-    if(!da) return -1;
-    return (b.priority||1) - (a.priority||1);
-  })
+
+  if(children && children.length){
+    group = this.$compile(children, {namespace: namespace, extra: extra });
+  }
 
 
   if(Component){
     var data = {},events;
     for(var i = 0, len = attrs.length; i < len; i++){
       var attr = attrs[i];
-      var value = attr.value||"";
-      _.touchExpression(value);
+      var value = this._touchExpr(attr.value || "");
+      
       var name = attr.name;
       var etest = name.match(eventReg);
-
       // bind event proxy
       if(etest){
         events = events || {};
-        if(typeof value === 'string') value = Regular.expression(value);
-        var fn  = value.get(self);
-        events[etest[1]] = fn.bind(this);
+        events[etest[1]] = _.handleEvent.call(this, value, etest[1]);
         continue;
       }
 
       if(value.type !== 'expression'){
         data[attr.name] = value;
+      }else{
+        data[attr.name] = value.get(self); 
       }
+      if( attr.name === 'ref'  && value != null){
+        ref = value.type === 'expression'? value.get(self): value;
+      }
+      if( attr.name === 'scope'){
+        scope = true;
+      }
+
     }
 
-    if(ast.children) var $body = this.$compile(ast.children);
-    var component = new Component({data: data, events: events, $body: $body, $root: self.$root||self});
+    var $body;
+    if(ast.children) $body = ast.children;
+    var component = new Component({data: data, events: events, $body: $body, $parent: scope? null: this, namespace: namespace});
+    if(ref &&  self.$context.$refs) self.$context.$refs[ref] = component;
     for(var i = 0, len = attrs.length; i < len; i++){
       var attr = attrs[i];
       var value = attr.value||"";
       if(value.type === 'expression' && attr.name.indexOf('on-')===-1){
-        this.$bind(component, value, attr.name);
+        value = self._touchExpr(value);
+        this.$watch(value, component.$update.bind(component, attr.name))
+        if(value.set) component.$watch(attr.name, self.$update.bind(self, value));
       }
     }
+    if(ref){
+      component.$on('destroy', function(){
+        if(self.$context.$refs) self.$context.$refs[ref] = null;
+      })
+    }
     return component;
-  }else if(ast.tag === 'r-content' && this.$body){
+  }
+  else if(ast.tag === 'r-content' && this.$body){
     return this.$body;
   }
 
-  if(ast.tag === 'svg') this._ns_ = 'svg';
-  var element = dom.create(ast.tag, this._ns_, attrs);
-  var destroies = [];
+  var element = dom.create(ast.tag, namespace, attrs);
+  // context element
+
   var child;
-  var directive = [];
-  for(var i = 0, len = attrs.length; i < len; i++){
-    bindAttrWatcher.call(this, element, attrs[i],destroies)
+
+  if(group && !_.isVoidTag(ast.tag)){
+    dom.inject( combine.node(group) , element)
   }
-  if(ast.tag === 'svg') this._ns_ = null;
+
+  // sort before
+  attrs.sort(function(a1, a2){
+    var d1 = Constructor.directive(a1.name),
+      d2 = Constructor.directive(a2.name);
+    if(d1 && d2) return (d2.priority || 1) - (d1.priority || 1);
+    if(d1) return 1;
+    if(d2) return -1;
+    if(a2.name === "type") return 1;
+    return -1;
+  })
+  // may distinct with if else
+  var destroies = walkAttributes.call(this, attrs, element, destroies);
 
 
 
-  return {
+  var res  = {
+    type: "element",
+    group: group,
     node: function(){
-      if(group && !_.isVoidTag(ast.tag)) element.appendChild(combine.node(group));
       return element;
     },
     last: function(){
       return element;
     },
-    destroy: function(){
-      if(group) group.destroy();
-      if(destroies.length) {
-        destroies.forEach(function(destroy){destroy() })
+    destroy: function(first){
+      if( first ){
+        animate.remove( element, group? group.destroy.bind( group ): _.noop );
+      }else if(group) {
+        group.destroy();
       }
-      dom.remove(element);
+      // destroy ref
+      if( destroies.length ) {
+        destroies.forEach(function( destroy ){
+          if( destroy ){
+            if( typeof destroy.destroy === 'function' ){
+              destroy.destroy()
+            }else{
+              destroy();
+            }
+          }
+        })
+      }
     }
   }
+  return res;
 }
 
-// dada
+function walkAttributes(attrs, element){
+  var bindings = []
+  for(var i = 0, len = attrs.length; i < len; i++){
+    var binding = this._walk(attrs[i], {element: element, fromElement: true, attrs: attrs})
+    if(binding) bindings.push(binding);
+  }
+  return bindings;
+}
 
-function bindAttrWatcher(element, attr, destroies){
+walkers.attribute = function(ast ,options){
+  var attr = ast;
   var Component = this.constructor;
   var self = this;
+  var element = options.element;
   var name = attr.name,
     value = attr.value || "", directive = Component.directive(name);
 
-  _.touchExpression(value);
+  value = this._touchExpr(value);
 
 
   if(directive && directive.link){
-    var destroy = directive.link.call(self, element, value, name);
-    if(typeof destroy === 'function') destroies.push(destroy);
+    var binding = directive.link.call(self, element, value, name, options.attrs);
+    if(typeof binding === 'function') binding = {destroy: binding}; 
+    return binding;
   }else{
-      
-    if(value.type == 'expression' ){
+    if( name === 'ref'  && value != null && options.fromElement){
+      var ref = value.type === 'expression'? value.get(self): value;
+      var refs = this.$context.$refs;
+      if(refs){
+        refs[ref] = element
+        return {
+          destroy: function(){
+            refs[ref] = null;
+          }
+        }
+      }
+    }
+    if(value.type === 'expression' ){
+
       this.$watch(value, function(nvalue, old){
         dom.attr(element, name, nvalue);
-      });
+      }, {init: true});
     }else{
       if(_.isBooleanAttr(name)){
         dom.attr(element, name, true);
@@ -1516,14 +1680,23 @@ function bindAttrWatcher(element, attr, destroies){
         dom.attr(element, name, value);
       }
     }
+    if(!options.fromElement){
+      return {
+        destroy: function(){
+          dom.attr(element, name, null);
+        }
+      }
+    }
   }
-  
+
 }
+
 
 });
 require.register("regularjs/src/env.js", function(exports, require, module){
 // some fixture test;
 // ---------------
+var _ = require('./util');
 exports.svg = (function(){
   return typeof document !== "undefined" && document.implementation.hasFeature( "http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1" );
 })();
@@ -1533,14 +1706,21 @@ exports.transition = (function(){
   
 })();
 
+// whether have component in initializing
+exports.exprCache = _.cache(1000);
+exports.isRunning = false;
 
 });
 require.register("regularjs/src/index.js", function(exports, require, module){
 module.exports = require("./Regular.js");
+
 require("./directive/base.js");
+require("./directive/animation.js");
 require("./module/timeout.js");
+
 module.exports.dom = require("./dom.js");
 module.exports.util = require("./util.js");
+module.exports.env = require("./env.js");
 
 
 });
@@ -1554,14 +1734,22 @@ require.register("regularjs/src/dom.js", function(exports, require, module){
 
 // ---
 // license: MIT-style license. http://mootools.net
-// requires: [Window, Document, Array, String, Function, Object, Number, Slick.Parser, Slick.Finder]
 
 var dom = module.exports;
 var env = require("./env.js");
 var _ = require("./util");
 var tNode = document.createElement('div')
-var addEvent, removeEvent, isFixEvent;
+var addEvent, removeEvent;
 var noop = function(){}
+
+var namespaces = {
+  html: "http://www.w3.org/1999/xhtml",
+  svg: "http://www.w3.org/2000/svg"
+}
+
+dom.body = document.body;
+
+dom.doc = document;
 
 // camelCase
 function camelCase(str){
@@ -1606,6 +1794,42 @@ dom.find = function(sl){
   if(sl.indexOf('#')!==-1) return document.getElementById( sl.slice(1) );
 }
 
+dom.inject = function(node, refer, position){
+
+  position = position || 'bottom';
+
+  if(Array.isArray(node)){
+    var tmp = node;
+    node = dom.fragment();
+    for(var i = 0,len = tmp.length; i < len ;i++){
+      node.appendChild(tmp[i]);
+    }
+  }
+
+  var firstChild, next;
+  switch(position){
+    case 'bottom':
+      refer.appendChild( node );
+      break;
+    case 'top':
+      if( firstChild = refer.firstChild ){
+        refer.insertBefore( node, refer.firstChild );
+      }else{
+        refer.appendChild( node );
+      }
+      break;
+    case 'after':
+      if( next = refer.nextSibling ){
+        next.parentNode.insertBefore( node, next );
+      }else{
+        refer.parentNode.appendChild( node );
+      }
+      break;
+    case 'before':
+      refer.parentNode.insertBefore( node, refer );
+  }
+}
+
 
 dom.id = function(id){
   return document.getElementById(id);
@@ -1615,25 +1839,7 @@ dom.id = function(id){
 dom.create = function(type, ns, attrs){
   if(ns === 'svg'){
     if(!env.svg) throw Error('the env need svg support')
-    ns = "http://www.w3.org/2000/svg";
-  }
-  //@fix ie can't dynamic type
-  if(type === 'input'){
-    if(dom.msie < 9){
-      var str = '<input '
-      for(var i = 0; i < attrs.length; i++){
-        var attr = attrs[i];
-        if(attr.value && attr.value.type!=='expression' && attr.name.indexOf('r-')===-1){
-          str += (' '+attr.name + '="' + attr.value+'"');
-        }
-      }
-      try{
-        return document.createElement(str+'>');
-      }catch(e){
-        return document.createElement(input);
-      }
-      
-    }
+    ns = namespaces.svg;
   }
   return !ns? document.createElement(type): document.createElementNS(ns, type);
 }
@@ -1647,7 +1853,8 @@ dom.fragment = function(){
 
 var specialAttr = {
   'class': function(node, value){
-    ('className' in node) ? node.className = (value || '') : node.setAttribute('class', value);
+    ('className' in node && (node.namespaceURI === namespaces.html || !node.namespaceURI)) ?
+      node.className = (value || '') : node.setAttribute('class', value);
   },
   'for': function(node, value){
     ('htmlFor' in node) ? node.htmlFor = value : node.setAttribute('for', value);
@@ -1677,13 +1884,12 @@ dom.attr = function(node, name, value){
       }
     } else {
       return (node[name] ||
-               (node.attributes.getNamedItem(name)|| noop).specified)
-             ? name
-             : undefined;
+               (node.attributes.getNamedItem(name)|| noop).specified) ? name : undefined;
     }
   } else if (typeof (value) !== 'undefined') {
     // if in specialAttr;
     if(specialAttr[name]) specialAttr[name](node, value);
+    else if(value === null) node.removeAttribute(name)
     else node.setAttribute(name, value);
   } else if (node.getAttribute) {
     // the extra argument "2" is to get the right thing for a.href in IE, see jQuery code
@@ -1694,20 +1900,26 @@ dom.attr = function(node, name, value){
   }
 }
 
-// @TODO: event fixed,  context proxy , etc...
-var handlers = {};
 
 dom.on = function(node, type, handler){
-  type = fixEventName(node, type);
+  var types = type.split(' ');
   handler.real = function(ev){
-    handler.call(node, new Event(ev));
+    var $event = new Event(ev);
+    $event.origin = node;
+    handler.call(node, $event);
   }
-  addEvent(node, type, handler.real);
+  types.forEach(function(type){
+    type = fixEventName(node, type);
+    addEvent(node, type, handler.real);
+  });
 }
 dom.off = function(node, type, handler){
-  type = fixEventName(node, type);
+  var types = type.split(' ');
   handler = handler.real || handler;
-  removeEvent(node, type, handler);
+  types.forEach(function(type){
+    type = fixEventName(node, type);
+    removeEvent(node, type, handler);
+  })
 }
 
 
@@ -1730,7 +1942,7 @@ dom.text = (function (){
 })();
 
 
-dom.html = function(html){
+dom.html = function( node, html ){
   if(typeof html === "undefined"){
     return node.innerHTML;
   }else{
@@ -1749,29 +1961,40 @@ dom.remove = function(node){
 // css Settle & Getter from angular
 // =================================
 // it isnt computed style 
-// dom.css = function(node, name, value){
-//   if (typeof value !== "undefined") {
-//     name = camelCase(name);
-//     if(name) node.style[name] = value;
-//   } else {
-//     var val;
-//     if (dom.msie <= 8) {
-//       // this is some IE specific weirdness that jQuery 1.6.4 does not sure why
-//       val = node.currentStyle && node.currentStyle[name];
-//       if (val === '') val = 'auto';
-//     }
-//     val = val || node.style[name];
-//     if (dom.msie <= 8) {
-//       val = val === '' ? undefined : val;
-//     }
-//     return  val;
-//   }
-// }
+dom.css = function(node, name, value){
+  if( _.typeOf(name) === "object" ){
+    for(var i in name){
+      if( name.hasOwnProperty(i) ){
+        dom.css( node, i, name[i] );
+      }
+    }
+    return;
+  }
+  if ( typeof value !== "undefined" ) {
+
+    name = camelCase(name);
+    if(name) node.style[name] = value;
+
+  } else {
+
+    var val;
+    if (dom.msie <= 8) {
+      // this is some IE specific weirdness that jQuery 1.6.4 does not sure why
+      val = node.currentStyle && node.currentStyle[name];
+      if (val === '') val = 'auto';
+    }
+    val = val || node.style[name];
+    if (dom.msie <= 8) {
+      val = val === '' ? undefined : val;
+    }
+    return  val;
+  }
+}
 
 dom.addClass = function(node, className){
   var current = node.className || "";
   if ((" " + current + " ").indexOf(" " + className + " ") === -1) {
-    node.className = current + " " + className;
+    node.className = current? ( current + " " + className ) : className;
   }
 }
 
@@ -1791,7 +2014,7 @@ dom.hasClass = function(node, className){
 
 //http://stackoverflow.com/questions/11068196/ie8-ie7-onchange-event-is-emited-only-after-repeated-selection
 function fixEventName(elem, name){
-  return (name == 'change'  &&  dom.msie < 9 && 
+  return (name === 'change'  &&  dom.msie < 9 && 
       (elem && elem.tagName && elem.tagName.toLowerCase()==='input' && 
         (elem.type === 'checkbox' || elem.type === 'radio')
       )
@@ -1800,26 +2023,28 @@ function fixEventName(elem, name){
 
 var rMouseEvent = /^(?:click|dblclick|contextmenu|DOMMouseScroll|mouse(?:\w+))$/
 var doc = document;
-doc = (!doc.compatMode || doc.compatMode == 'CSS1Compat') ? doc.documentElement : doc.body;
+doc = (!doc.compatMode || doc.compatMode === 'CSS1Compat') ? doc.documentElement : doc.body;
 function Event(ev){
   ev = ev || window.event;
   if(ev._fixed) return ev;
   this.event = ev;
+  this.target = ev.target || ev.srcElement;
 
   var type = this.type = ev.type;
   var button = this.button = ev.button;
+
   // if is mouse event patch pageX
   if(rMouseEvent.test(type)){ //fix pageX
     this.pageX = (ev.pageX != null) ? ev.pageX : ev.clientX + doc.scrollLeft;
     this.pageY = (ev.pageX != null) ? ev.pageY : ev.clientY + doc.scrollTop;
     if (type === 'mouseover' || type === 'mouseout'){// fix relatedTarget
       var related = ev.relatedTarget || ev[(type === 'mouseover' ? 'from' : 'to') + 'Element'];
-      while (related && related.nodeType == 3) related = related.parentNode;
+      while (related && related.nodeType === 3) related = related.parentNode;
       this.relatedTarget = related;
     }
   }
   // if is mousescroll
-  if (type == 'DOMMouseScroll' || type == 'mousewheel'){
+  if (type === 'DOMMouseScroll' || type === 'mousewheel'){
     // ff ev.detail: 3    other ev.wheelDelta: -120
     this.wheelDelta = (ev.wheelDelta) ? ev.wheelDelta / 120 : -(ev.detail || 0) / 3;
   }
@@ -1836,14 +2061,14 @@ function Event(ev){
 _.extend(Event.prototype, {
   immediateStop: _.isFalse,
   stop: function(){
-    this.preventDefault().stopPropgation();
+    this.preventDefault().stopPropagation();
   },
   preventDefault: function(){
     if (this.event.preventDefault) this.event.preventDefault();
     else this.event.returnValue = false;
     return this;
   },
-  stopPropgation: function(){
+  stopPropagation: function(){
     if (this.event.stopPropagation) this.event.stopPropagation();
     else this.event.cancelBubble = true;
     return this;
@@ -1854,10 +2079,43 @@ _.extend(Event.prototype, {
 })
 
 
+dom.nextFrame = (function(){
+    var request = window.requestAnimationFrame ||
+                  window.webkitRequestAnimationFrame ||
+                  window.mozRequestAnimationFrame|| 
+                  function(callback){
+                    setTimeout(callback, 16)
+                  }
+
+    var cancel = window.cancelAnimationFrame ||
+                 window.webkitCancelAnimationFrame ||
+                 window.mozCancelAnimationFrame ||
+                 window.webkitCancelRequestAnimationFrame ||
+                 function(tid){
+                    clearTimeout(tid)
+                 }
+  
+  return function(callback){
+    var id = request(callback);
+    return function(){ cancel(id); }
+  }
+})();
+
+// 3ks for angular's raf  service
+var k;
+dom.nextReflow = function(callback){
+  dom.nextFrame(function(){
+    k = document.body.offsetWidth;
+    callback();
+  })
+}
+
+
+
+
 });
 require.register("regularjs/src/group.js", function(exports, require, module){
 var _ = require('./util');
-var dom = require('./dom');
 var combine = require('./helper/combine')
 
 function Group(list){
@@ -1866,8 +2124,8 @@ function Group(list){
 
 
 _.extend(Group.prototype, {
-  destroy: function(){
-    combine.destroy(this.children);
+  destroy: function(first){
+    combine.destroy(this.children, first);
     if(this.ondestroy) this.ondestroy();
     this.children = null;
   },
@@ -1887,8 +2145,26 @@ module.exports = Group;
 
 
 });
+require.register("regularjs/src/config.js", function(exports, require, module){
+
+module.exports = {
+'BEGIN': '{',
+'END': '}'
+}
+});
 require.register("regularjs/src/parser/Lexer.js", function(exports, require, module){
 var _ = require("../util.js");
+var config = require("../config.js");
+
+// some custom tag  will conflict with the Lexer progress
+var conflictTag = {"}": "{", "]": "["}, map1, map2;
+// some macro for lexer
+var macro = {
+  'NAME': /(?:[:_A-Za-z][-\.:_0-9A-Za-z]*)/,
+  'IDENT': /[\$_A-Za-z][_0-9A-Za-z\$]*/,
+  'SPACE': /[\r\n\f ]/
+}
+
 
 var test = /a|(b)/.exec("a");
 var testSubCapure = test && test[1] === undefined? 
@@ -1902,21 +2178,30 @@ function wrapHander(handler){
 }
 
 function Lexer(input, opts){
+  if(conflictTag[config.END]){
+    this.markStart = conflictTag[config.END];
+    this.markEnd = config.END;
+  }
+
   this.input = (input||"").trim();
   this.opts = opts || {};
-  this.map = this.opts.mode != 2?  map1: map2;
+  this.map = this.opts.mode !== 2?  map1: map2;
   this.states = ["INIT"];
-  if(this.opts.state) this.states.push( this.opts.state );
+  if(opts && opts.expression){
+     this.states.push("JST");
+     this.expression = true;
+  }
 }
 
 var lo = Lexer.prototype
 
 
 lo.lex = function(str){
-  str = (str||this.input).trim();
-  var tokens = [], remain = this.input = str, 
-    TRUNK, split, test,mlen, token, state;
-  // 初始化
+  str = (str || this.input).trim();
+  var tokens = [], split, test,mlen, token, state;
+  this.input = str, 
+  this.marks = 0;
+  // init the pos index
   this.index=0;
   var i = 0;
   while(str){
@@ -1946,7 +2231,7 @@ lo.error = function(msg){
 
 lo._process = function(args, split,str){
   // console.log(args.join(","), this.state())
-  var links = split.links,marched = false;
+  var links = split.links, marched = false, token;
 
   for(var len = links.length, i=0;i<len ;i++){
     var link = links[i],
@@ -1956,7 +2241,7 @@ lo._process = function(args, split,str){
     if(testSubCapure(args[index])) {
       marched = true;
       if(handler){
-        var token = handler.apply(this, args.slice(index, index + link[1]))
+        token = handler.apply(this, args.slice(index, index + link[1]))
         if(token)  token.pos = this.index;
       }
       break;
@@ -1974,47 +2259,77 @@ lo._process = function(args, split,str){
   }
   return token;
 }
-/**
- * 进入某种状态
- * @param  {[type]} state [description]
- * @return {[type]}
- */
 lo.enter = function(state){
-  // 如果有多层状态则 则这里用一个栈来标示，
-  // 个人目前还没有遇到词法解析阶段需要多层判断的场景
   this.states.push(state)
   return this;
 }
-/**
- * 退出
- * @return {[type]}
- */
 
 lo.state = function(){
   var states = this.states;
   return states[states.length-1];
 }
 
-/**
- * 退出某种状态
- * @return {[type]}
- */
 lo.leave = function(state){
   var states = this.states;
   if(!state || states[states.length-1] === state) states.pop()
 }
 
-var macro = {
-  'BEGIN': '{{',
-  'END': '}}',
-  //http://www.w3.org/TR/REC-xml/#NT-Name
-  // ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
-  // 暂时不这么严格，提取合适范围
-  // 'NAME': /(?:[:_A-Za-z\xC0-\u2FEF\u3001-\uD7FF\uF900-\uFFFF][-\.:_0-9A-Za-z\xB7\xC0-\u2FEF\u3001-\uD7FF\uF900-\uFFFF]*)/
-  'NAME': /(?:[:_A-Za-z][-\.:_0-9A-Za-z]*)/,
-  'IDENT': /[\$_A-Za-z][_0-9A-Za-z\$]*/,
-  'SPACE': /[\r\n\f ]/
+
+Lexer.setup = function(){
+  macro.END = config.END;
+  macro.BEGIN = config.BEGIN;
+  //
+  map1 = genMap([
+    // INIT
+    rules.ENTER_JST,
+    rules.ENTER_TAG,
+    rules.TEXT,
+
+    //TAG
+    rules.TAG_NAME,
+    rules.TAG_OPEN,
+    rules.TAG_CLOSE,
+    rules.TAG_PUNCHOR,
+    rules.TAG_ENTER_JST,
+    rules.TAG_UNQ_VALUE,
+    rules.TAG_STRING,
+    rules.TAG_SPACE,
+    rules.TAG_COMMENT,
+
+    // JST
+    rules.JST_OPEN,
+    rules.JST_CLOSE,
+    rules.JST_COMMENT,
+    rules.JST_EXPR_OPEN,
+    rules.JST_IDENT,
+    rules.JST_SPACE,
+    rules.JST_LEAVE,
+    rules.JST_NUMBER,
+    rules.JST_PUNCHOR,
+    rules.JST_STRING,
+    rules.JST_COMMENT
+    ])
+
+  // ignored the tag-relative token
+  map2 = genMap([
+    // INIT no < restrict
+    rules.ENTER_JST2,
+    rules.TEXT,
+    // JST
+    rules.JST_COMMENT,
+    rules.JST_OPEN,
+    rules.JST_CLOSE,
+    rules.JST_EXPR_OPEN,
+    rules.JST_IDENT,
+    rules.JST_SPACE,
+    rules.JST_LEAVE,
+    rules.JST_NUMBER,
+    rules.JST_PUNCHOR,
+    rules.JST_STRING,
+    rules.JST_COMMENT
+    ])
 }
+
 
 function genMap(rules){
   var rule, map = {}, sign;
@@ -2028,6 +2343,11 @@ function genMap(rules){
 
 function setup(map){
   var split, rules, trunks, handler, reg, retain, rule;
+  function replaceFn(all, one){
+    return typeof macro[one] === 'string'? 
+      _.escapeRegExp(macro[one]) 
+      : String(macro[one]).slice(1,-1);
+  }
 
   for(var i in map){
 
@@ -2041,14 +2361,12 @@ function setup(map){
       reg = rule[0];
       handler = rule[1];
 
-      if(typeof handler == 'string'){
+      if(typeof handler === 'string'){
         handler = wrapHander(handler);
       }
-      if(_.typeOf(reg) == 'regexp') reg = reg.toString().slice(1, -1);
+      if(_.typeOf(reg) === 'regexp') reg = reg.toString().slice(1, -1);
 
-      reg = reg.replace(/\{(\w+)\}/g, function(all, one){
-        return typeof macro[one] == 'string'? _.escapeRegExp(macro[one]): String(macro[one]).slice(1,-1);
-      })
+      reg = reg.replace(/\{(\w+)\}/g, replaceFn)
       retain = _.findSubCapture(reg) + 1; 
       split.links.push([split.curIndex, retain, handler]); 
       split.curIndex += retain;
@@ -2059,22 +2377,19 @@ function setup(map){
   return map;
 }
 
-/**
- * build the mode 1 and mode 2‘s tokenizer
- */
 var rules = {
 
   // 1. INIT
   // ---------------
 
   // mode1's JST ENTER RULE
-  ENTER_JST: [/[^\x00\<]*?(?={BEGIN})/, function(all,one){
+  ENTER_JST: [/[^\x00<]*?(?={BEGIN})/, function(all){
     this.enter('JST');
     if(all) return {type: 'TEXT', value: all}
   }],
 
   // mode2's JST ENTER RULE
-  ENTER_JST2: [/[^\x00]*?(?={BEGIN})/, function(all,one){
+  ENTER_JST2: [/[^\x00]*?(?={BEGIN})/, function(all){
     this.enter('JST');
     if(all) return {type: 'TEXT', value: all}
   }],
@@ -2089,10 +2404,10 @@ var rules = {
   // 2. TAG
   // --------------------
   TAG_NAME: [/{NAME}/, 'NAME', 'TAG'],
-  TAG_UNQ_VALUE: [/[^&"'=><`\r\n\f ]+/, 'UNQ', 'TAG'],
+  TAG_UNQ_VALUE: [/[^\{}&"'=><`\r\n\f ]+/, 'UNQ', 'TAG'],
 
   TAG_OPEN: [/<({NAME})\s*/, function(all, one){
-    return {type: 'TAG_OPEN', value: one.toLowerCase() }
+    return {type: 'TAG_OPEN', value: one}
   }, 'TAG'],
   TAG_CLOSE: [/<\/({NAME})[\r\n\f ]*>/, function(all, one){
     this.leave();
@@ -2100,7 +2415,7 @@ var rules = {
   }, 'TAG'],
 
     // mode2's JST ENTER RULE
-  TAG_ENTER_JST: [/(?={BEGIN})/, function(all,one){
+  TAG_ENTER_JST: [/(?={BEGIN})/, function(){
     this.enter('JST');
   }, 'TAG'],
 
@@ -2116,7 +2431,7 @@ var rules = {
   }, 'TAG'],
 
   TAG_SPACE: [/{SPACE}+/, null, 'TAG'],
-  TAG_COMMENT: [/\<\!--([^\x00]*?)--\>/, null ,'TAG'],
+  TAG_COMMENT: [/<\!--([^\x00]*?)--\>/, null ,'TAG'],
 
   // 3. JST
   // -------------------
@@ -2127,12 +2442,18 @@ var rules = {
       value: name
     }
   }, 'JST'],
-  JST_LEAVE: [/{END}/, function(){
-    this.leave('JST');
-    return {type: 'END'}
+  JST_LEAVE: [/{END}/, function(all){
+    if(this.markEnd === all && this.expression) return {type: this.markEnd, value: this.markEnd};
+    if(!this.markEnd || !this.marks ){
+      this.firstEnterStart = false;
+      this.leave('JST');
+      return {type: 'END'}
+    }else{
+      this.marks--;
+      return {type: this.markEnd, value: this.markEnd}
+    }
   }, 'JST'],
-
-  JST_CLOSE: [/{BEGIN}\s*\/\s*({IDENT})\s*{END}/, function(all, one){
+  JST_CLOSE: [/{BEGIN}\s*\/({IDENT})\s*{END}/, function(all, one){
     this.leave('JST');
     return {
       type: 'CLOSE',
@@ -2143,15 +2464,25 @@ var rules = {
     this.leave();
   }, 'JST'],
   JST_EXPR_OPEN: ['{BEGIN}',function(all, one){
-    var escape = one == '=';
+    if(all === this.markStart){
+      if(this.expression) return { type: this.markStart, value: this.markStart };
+      if(this.firstEnterStart || this.marks){
+        this.marks++
+        this.firstEnterStart = false;
+        return { type: this.markStart, value: this.markStart };
+      }else{
+        this.firstEnterStart = true;
+      }
+    }
     return {
       type: 'EXPR_OPEN',
-      escape: escape
+      escape: false
     }
+
   }, 'JST'],
   JST_IDENT: ['{IDENT}', 'IDENT', 'JST'],
   JST_SPACE: [/[ \r\n\f]+/, null, 'JST'],
-  JST_PUNCHOR: [/[=!]?==|[-=><+*\/%\!]?\=|\|\||&&|\.\.|[\<\>\[\]\(\)\-\|\{}\+\*\/%?:\.!,]/, function(all){
+  JST_PUNCHOR: [/[=!]?==|[-=><+*\/%\!]?\=|\|\||&&|\@\(|\.\.|[<\>\[\]\(\)\-\|\{}\+\*\/%?:\.!,]/, function(all){
     return { type: all, value: all }
   },'JST'],
 
@@ -2163,62 +2494,13 @@ var rules = {
   }, 'JST']
 }
 
-//
-var map1 = genMap([
-  // INIT
-  rules.ENTER_JST,
-  rules.ENTER_TAG,
-  rules.TEXT,
 
-  //TAG
-  rules.TAG_NAME,
-  rules.TAG_OPEN,
-  rules.TAG_CLOSE,
-  rules.TAG_PUNCHOR,
-  rules.TAG_ENTER_JST,
-  rules.TAG_UNQ_VALUE,
-  rules.TAG_STRING,
-  rules.TAG_SPACE,
-  rules.TAG_COMMENT,
-
-  // JST
-  rules.JST_OPEN,
-  rules.JST_CLOSE,
-  rules.JST_COMMENT,
-  rules.JST_EXPR_OPEN,
-  rules.JST_IDENT,
-  rules.JST_SPACE,
-  rules.JST_LEAVE,
-  rules.JST_NUMBER,
-  rules.JST_PUNCHOR,
-  rules.JST_STRING,
-  rules.JST_COMMENT
-  ])
-
-// ignored the tag-relative token
-var map2 = genMap([
-  // INIT no < restrict
-  rules.ENTER_JST2,
-  rules.TEXT,
-  // JST
-  rules.JST_COMMENT,
-  rules.JST_OPEN,
-  rules.JST_CLOSE,
-  rules.JST_EXPR_OPEN,
-  rules.JST_IDENT,
-  rules.JST_SPACE,
-  rules.JST_LEAVE,
-  rules.JST_NUMBER,
-  rules.JST_PUNCHOR,
-  rules.JST_STRING,
-  rules.JST_COMMENT
-  ])
+// setup when first config
+Lexer.setup();
 
 
 
 module.exports = Lexer;
-
-
 
 });
 require.register("regularjs/src/parser/node.js", function(exports, require, module){
@@ -2279,12 +2561,17 @@ module.exports = {
 });
 require.register("regularjs/src/parser/Parser.js", function(exports, require, module){
 var _ = require("../util.js");
+
+var config = require("../config.js");
 var node = require("./node.js");
 var Lexer = require("./Lexer.js");
 var varName = _.varName;
 var ctxName = _.ctxName;
+var extName = _.extName;
 var isPath = _.makePredicate("STRING IDENT NUMBER");
 var isKeyWord = _.makePredicate("true false undefined null this Array Date JSON Math NaN RegExp decodeURI decodeURIComponent encodeURI encodeURIComponent parseFloat parseInt Object");
+
+
 
 
 function Parser(input, opts){
@@ -2293,6 +2580,7 @@ function Parser(input, opts){
   this.input = input;
   this.tokens = new Lexer(input, opts).lex();
   this.pos = 0;
+  this.noComputed =  opts.noComputed;
   this.length = this.tokens.length;
 }
 
@@ -2300,9 +2588,13 @@ function Parser(input, opts){
 var op = Parser.prototype;
 
 
-op.parse = function(str){
+op.parse = function(){
   this.pos = 0;
-  return this.program();
+  var res= this.program();
+  if(this.ll().type === 'TAG_CLOSE'){
+    this.error("You may got a unclosed Tag")
+  }
+  return res;
 }
 
 op.ll =  function(k){
@@ -2315,23 +2607,22 @@ op.ll =  function(k){
   return this.tokens[pos];
 }
   // lookahead
-op.la = function(k, value){
+op.la = function(k){
   return (this.ll(k) || '').type;
 }
 
 op.match = function(type, value){
+  var ll;
   if(!(ll = this.eat(type, value))){
-    var ll  = this.ll();
+    ll  = this.ll();
     this.error('expect [' + type + (value == null? '':':'+ value) + ']" -> got "[' + ll.type + (value==null? '':':'+ll.value) + ']', ll.pos)
   }else{
-      return ll;
+    return ll;
   }
 }
 
-// @TODO
 op.error = function(msg, pos){
-  // console.log(this.ll())
-  var msg =  "Parse Error: " + msg +  ':\n' + _.trackErrorPos(this.input, typeof pos === 'number'? pos: this.ll().pos||0);
+  msg =  "Parse Error: " + msg +  ':\n' + _.trackErrorPos(this.input, typeof pos === 'number'? pos: this.ll().pos||0);
   throw new Error(msg);
 }
 
@@ -2343,14 +2634,13 @@ op.eat = function(type, value){
   var ll = this.ll();
   if(typeof type !== 'string'){
     for(var len = type.length ; len--;){
-      if(ll.type == type[len]) {
+      if(ll.type === type[len]) {
         this.next();
         return ll;
       }
     }
   }else{
-    if( ll.type == type 
-        && (typeof value == 'undefined' || ll.value == value) ){
+    if( ll.type === type && (typeof value === 'undefined' || ll.value === value) ){
        this.next();
        return ll;
     }
@@ -2362,11 +2652,13 @@ op.eat = function(type, value){
 //  :EOF
 //  | (statement)* EOF
 op.program = function(){
-  var statements = [], statement, ll = this.ll();
+  var statements = [],  ll = this.ll();
   while(ll.type !== 'EOF' && ll.type !=='TAG_CLOSE'){
+
     statements.push(this.statement());
     ll = this.ll();
   }
+  // if(ll.type === 'TAG_CLOSE') this.error("You may have unmatched Tag")
   return statements;
 }
 
@@ -2375,7 +2667,7 @@ op.program = function(){
 //  | jst
 //  | text
 op.statement = function(){
-  var ll = this.ll(),la;
+  var ll = this.ll();
   switch(ll.type){
     case 'NAME':
     case 'TEXT':
@@ -2405,7 +2697,7 @@ op.xml = function(){
   name = this.match('TAG_OPEN').value;
   attrs = this.attrs();
   selfClosed = this.eat('/')
-  this.match('>')
+  this.match('>');
   if( !selfClosed && !_.isVoidTag(name) ){
     children = this.program();
     if(!this.eat('TAG_CLOSE', name)) this.error('expect </'+name+'> got'+ 'no matched closeTag')
@@ -2413,18 +2705,41 @@ op.xml = function(){
   return node.element(name, attrs, children);
 }
 
+// xentity
+//  -rule(wrap attribute)
+//  -attribute
+//
+// __example__
+//  name = 1 |  
+//  ng-hide |
+//  on-click={{}} | 
+//  {{#if name}}on-click={{xx}}{{#else}}on-tap={{}}{{/if}}
+
+op.xentity = function(ll){
+  var name = ll.value, value;
+  if(ll.type === 'NAME'){
+    if( this.eat("=") ) value = this.attvalue();
+    return node.attribute( name, value );
+  }else{
+    if( name !== 'if') this.error("current version. ONLY RULE #if #else #elseif is valid in tag, the rule #" + name + ' is invalid');
+    return this['if'](true);
+  }
+
+}
+
 // stag     ::=    '<' Name (S attr)* S? '>'  
 // attr    ::=     Name Eq attvalue
-op.attrs = function(){
+op.attrs = function(isAttribute){
+  var eat
+  if(!isAttribute){
+    eat = ["NAME", "OPEN"]
+  }else{
+    eat = ["NAME"]
+  }
 
-
-  var attrs = [], attr, ll = this.ll(), value;
-
-  while( ll = this.eat(["NAME", "&"]) ){
-    var name = ll.value;
-    if( this.eat("=") ) value = this.attvalue();
-    attrs.push(node.attribute( name, value ));
-    value = undefined;
+  var attrs = [], ll;
+  while (ll = this.eat(eat)){
+    attrs.push(this.xentity( ll ))
   }
   return attrs;
 }
@@ -2440,14 +2755,15 @@ op.attvalue = function(){
     case "STRING":
       this.next();
       var value = ll.value;
-      if(~value.indexOf('{{')){
+      if(~value.indexOf(config.BEGIN) && ~value.indexOf(config.END)){
         var constant = true;
-        var parsed = new Parser(value, {mode:2}).parse();
-        if(parsed.length==1 && parsed[0].type==='expression') return parsed[0];
+        var parsed = new Parser(value, { mode: 2 }).parse();
+        if(parsed.length === 1 && parsed[0].type === 'expression') return parsed[0];
         var body = [];
         parsed.forEach(function(item){
           if(!item.constant) constant=false;
-          body.push(item.body || "'" + item.text + "'");
+          // silent the mutiple inteplation
+            body.push(item.body || "'" + item.text + "'");        
         });
         body = "[" + body.join(",") + "].join('')";
         value = node.expression(body, null, constant);
@@ -2462,9 +2778,10 @@ op.attvalue = function(){
 
 
 // {{#}}
-op.directive = function(name){
-  name = name || (this.ll().value);
-  if(typeof this[name] == 'function'){
+op.directive = function(){
+  var name = this.ll().value;
+  this.next();
+  if(typeof this[name] === 'function'){
     return this[name]()
   }else{
     this.error('Undefined directive['+ name +']');
@@ -2473,7 +2790,7 @@ op.directive = function(name){
 
 // {{}}
 op.interplation = function(){
-  var nowatch = this.match('EXPR_OPEN').nowatch;
+  this.match('EXPR_OPEN');
   var res = this.expression(true);
   this.match('END');
   return res;
@@ -2481,40 +2798,40 @@ op.interplation = function(){
 
 // {{~}}
 op.include = function(){
-  this.next();
   var content = this.expression();
   this.match('END');
   return node.template(content);
 }
 
 // {{#if}}
-op["if"] = function(){
-  this.next();
-  var test = this.expr();
+op["if"] = function(tag){
+  var test = this.expression();
   var consequent = [], alternate=[];
 
   var container = consequent;
+  var statement = !tag? "statement" : "attrs";
 
   this.match('END');
 
-  var ll, type, close;
+  var ll, close;
   while( ! (close = this.eat('CLOSE')) ){
     ll = this.ll();
-    if(ll.type == 'OPEN'){
-      switch(ll.value){
+    if( ll.type === 'OPEN' ){
+      switch( ll.value ){
         case 'else':
           container = alternate;
           this.next();
-          this.match('END');
+          this.match( 'END' );
           break;
         case 'elseif':
-          alternate.push(this["if"]())
-          return node['if'](test, consequent, alternate)
+          this.next();
+          alternate.push( this["if"](tag) );
+          return node['if']( test, consequent, alternate );
         default:
-          container.push(this.statement())
+          container.push( this[statement](true) );
       }
     }else{
-      container.push(this.statement());
+      container.push(this[statement](true));
     }
   }
   // if statement not matched
@@ -2526,9 +2843,8 @@ op["if"] = function(){
 // @mark   mustache syntax have natrure dis, canot with expression
 // {{#list}}
 op.list = function(){
-  this.next();
   // sequence can be a list or hash
-  var sequence = this.expression(), variable, body, ll;
+  var sequence = this.expression(), variable, ll;
   var consequent = [], alternate=[];
   var container = consequent;
 
@@ -2546,18 +2862,24 @@ op.list = function(){
       container.push(this.statement());
     }
   }
-  if(ll.value !== 'list') this.error('expect ' + '{{/list}} got ' + '{{/' + ll.value + '}}', ll.pos );
+  if(ll.value !== 'list') this.error('expect ' + 'list got ' + '/' + ll.value + ' ', ll.pos );
   return node.list(sequence, variable, consequent, alternate);
 }
 
 
-// @TODO:
 op.expression = function(){
-  var expression = this.expr();
+  var expression;
+  if(this.eat('@(')){ //once bind
+    expression = this.expr();
+    expression.once = true;
+    this.match(')')
+  }else{
+    expression = this.expr();
+  }
   return expression;
 }
 
-op.expr = function(filter){
+op.expr = function(){
   this.depend = [];
 
   var buffer = this.filter()
@@ -2573,23 +2895,40 @@ op.expr = function(filter){
 op.filter = function(){
   var left = this.assign();
   var ll = this.eat('|');
-  var buffer, attr;
-  if(ll){
-    buffer = [
-      "(function(){", 
-          "var ", attr = "_f_", "=", left.get, ";"]
-    do{
+  var buffer = [], setBuffer, prefix,
+    attr = "_t_", 
+    set = left.set, get, 
+    tmp = "";
 
-      buffer.push(attr + " = "+ctxName+"._f('" + this.match('IDENT').value+ "')(" + attr) ;
+  if(ll){
+    if(set) setBuffer = [];
+
+    prefix = "(function(" + attr + "){";
+
+    do{
+      tmp = attr + " = " + ctxName + "._f_('" + this.match('IDENT').value+ "' ).get.call( "+_.ctxName +"," + attr ;
       if(this.eat(':')){
-        buffer.push(", "+ this.arguments("|").join(",") + ");")
+        tmp +=", "+ this.arguments("|").join(",") + ");"
       }else{
-        buffer.push(');');
+        tmp += ');'
       }
+      buffer.push(tmp);
+      setBuffer && setBuffer.unshift( tmp.replace(" ).get.call", " ).set.call") );
 
     }while(ll = this.eat('|'));
-    buffer.push("return " + attr + "})()");
-    return this.getset(buffer.join(""));
+    buffer.push("return " + attr );
+    setBuffer && setBuffer.push("return " + attr);
+
+    get =  prefix + buffer.join("") + "})("+left.get+")";
+    // we call back to value.
+    if(setBuffer){
+      // change _ss__(name, _p_) to _s__(name, filterFn(_p_));
+      set = set.replace(_.setName, 
+        prefix + setBuffer.join("") + "})("+　_.setName　+")" );
+
+    }
+    // the set function is depend on the filter definition. if it have set method, the set will work
+    return this.getset(get, set);
   }
   return left;
 }
@@ -2600,7 +2939,8 @@ op.assign = function(){
   var left = this.condition(), ll;
   if(ll = this.eat(['=', '+=', '-=', '*=', '/=', '%='])){
     if(!left.set) this.error('invalid lefthand expression in assignment expression');
-    return this.getset('(' + left.get + ll.type  + this.condition().get + ')', left.set);
+    return this.getset( left.set.replace("_p_", this.condition().get).replace("'='", "'"+ll.type+"'"), left.set);
+    // return this.getset('(' + left.get + ll.type  + this.condition().get + ')', left.set);
   }
   return left;
 }
@@ -2663,7 +3003,7 @@ op.equal = function(){
 // relation >= additive
 // relation in additive
 op.relation = function(){
-  var left = this.additive(), la,ll;
+  var left = this.additive(), ll;
   // @perf
   if(ll = (this.eat(['<', '>', '>=', '<=']) || this.eat('IDENT', 'in') )){
     return this.getset(left.get + ll.value + this.relation().get);
@@ -2728,24 +3068,21 @@ op.unary = function(){
 // member [ expression ]
 // member . ident  
 
-op.member = function(base, last, pathes){
-  // @TODO depend must deregular in this step
-  var ll, path, value, computed;
-  var first = !base;
+op.member = function(base, last, pathes, prevBase){
+  var ll, path, extValue;
 
+
+  var onlySimpleAccessor = false;
   if(!base){ //first
     path = this.primary();
     var type = typeof path;
-    if(type === 'string'){ // no keyword ident
+    if(type === 'string'){ 
       pathes = [];
-      if(path === '$self'){ // $self.1
-        pathes.push('*');
-        base = varName;
-      }else{ // keypath **
-        pathes.push(path);
-        last = path;
-        base = varName + "['" + path + "']";
-      }
+      pathes.push( path );
+      last = path;
+      extValue = extName + "." + path
+      base = "(typeof "+ extValue+ "!=='undefined'? "+extValue+":"+ ctxName + "._sg_('" + path + "', " + varName + ", " + extName + "))";
+      onlySimpleAccessor = true;
     }else{ //Primative Type
       if(path.get === 'this'){
         base = ctxName;
@@ -2754,7 +3091,6 @@ op.member = function(base, last, pathes){
         pathes = null;
         base = path.get;
       }
-      
     }
   }else{ // not first enter
     if(typeof last === 'string' && isPath( last) ){ // is valid path
@@ -2769,25 +3105,44 @@ op.member = function(base, last, pathes){
       case '.':
           // member(object, property, computed)
         var tmpName = this.match('IDENT').value;
+        prevBase = base;
+        if( this.la() !== "(" ){ 
+          base = ctxName + "._sg_('" + tmpName + "', " + base + ")";
+        }else{
           base += "['" + tmpName + "']";
-        return this.member( base, tmpName, pathes );
+        }
+        return this.member( base, tmpName, pathes,  prevBase);
       case '[':
           // member(object, property, computed)
         path = this.assign();
-        base += "[" + path.get + "]";
+        prevBase = base;
+        if( this.la() !== "(" ){ 
+        // means function call, we need throw undefined error when call function
+        // and confirm that the function call wont lose its context
+          base = ctxName + "._sg_(" + path.get + ", " + base + ")";
+        }else{
+          base += "[" + path.get + "]";
+        }
         this.match(']')
-        return this.member(base, path, pathes);
+        return this.member(base, path, pathes, prevBase);
       case '(':
         // call(callee, args)
         var args = this.arguments().join(',');
-        base = "(typeof ("+ base + ") !=='function'?" + base+"(" + args +"):" + base + (".call(" + ctxName + (args? "," + args : "")  + "))");
+        base =  base+"(" + args +")";
         this.match(')')
         return this.member(base, null, pathes);
     }
   }
-  if(pathes && pathes.length) this.depend.push(pathes);
+  if( pathes && pathes.length ) this.depend.push( pathes );
   var res =  {get: base};
-  if(last) res.set = base + '=' + _.setName;
+  if(last){
+    res.set = ctxName + "._ss_(" + 
+        (last.get? last.get : "'"+ last + "'") + 
+        ","+ _.setName + ","+ 
+        (prevBase?prevBase:_.varName) + 
+        ", '=', "+ ( onlySimpleAccessor? 1 : 0 ) + ")";
+  
+  }
   return res;
 }
 
@@ -2796,7 +3151,7 @@ op.member = function(base, last, pathes){
  */
 op.arguments = function(end){
   end = end || ')'
-  var args = [], ll;
+  var args = [];
   do{
     if(this.la() !== end){
       args.push(this.assign().get)
@@ -2855,12 +3210,12 @@ op.primary = function(){
 op.object = function(){
   var code = [this.match('{').type];
 
-  var ll = this.eat(['STRING', 'IDENT', 'NUMBER']);;
+  var ll = this.eat( ['STRING', 'IDENT', 'NUMBER'] );
   while(ll){
     code.push("'" + ll.value + "'" + this.match(':').type);
     var get = this.assign().get;
     code.push(get);
-    ll=null;
+    ll = null;
     if(this.eat(",") && (ll = this.eat(['STRING', 'IDENT', 'NUMBER'])) ) code.push(",");
   }
   code.push(this.match('}').type);
@@ -2871,12 +3226,17 @@ op.object = function(){
 // [ assign[,assign]*]
 op.array = function(){
   var code = [this.match('[').type], item;
-  while(item = this.assign()){
-    code.push(item.get);
-    if(this.eat(',')) code.push(",");
-    else break;
+  if( this.eat("]") ){
+
+     code.push("]");
+  } else {
+    while(item = this.assign()){
+      code.push(item.get);
+      if(this.eat(',')) code.push(",");
+      else break;
+    }
+    code.push(this.match(']').type);
   }
-  code.push(this.match(']').type);
   return {get: code.join("")};
 }
 
@@ -2913,7 +3273,7 @@ require.register("regularjs/src/helper/extend.js", function(exports, require, mo
   
 // inspired by backbone's extend and klass
 var _ = require("../util.js"),
-  fnTest = /xy/.test(function(){xy}) ? /\bsupr\b/ : /.*/,
+  fnTest = /xy/.test(function(){"xy";}) ? /\bsupr\b/:/.*/,
   isFn = function(o){return typeof o === "function"};
 
 
@@ -2931,16 +3291,19 @@ function process( what, o, supro ) {
   for ( var k in o ) {
     if (o.hasOwnProperty(k)) {
 
-      what[k] = isFn( o[k] ) && isFn( supro[k] )
-        && fnTest.test( o[k] ) ? wrap(k, o[k], supro) : o[k];
+      what[k] = isFn( o[k] ) && isFn( supro[k] ) && 
+        fnTest.test( o[k] ) ? wrap(k, o[k], supro) : o[k];
     }
   }
 }
 
+// if the property is ["events", "data", "computed"] , we should merge them
+var merged = ["events", "data", "computed"], mlen = merged.length;
 module.exports = function extend(o){
   o = o || {};
   var supr = this, proto,
     supro = supr && supr.prototype || {};
+
   if(typeof o === 'function'){
     proto = o.prototype;
     o.implement = implement;
@@ -2955,14 +3318,26 @@ module.exports = function extend(o){
   proto = _.createProto(fn, supro);
 
   function implement(o){
+    // we need merge the merged property
+    var len = mlen;
+    for(;len--;){
+      var prop = merged[len];
+      if(o.hasOwnProperty(prop) && proto.hasOwnProperty(prop)){
+        _.extend(proto[prop], o[prop], true) 
+        delete o[prop];
+      }
+    }
+
+
     process(proto, o, supro); 
     return this;
   }
 
 
-  if(supr.__after__) supr.__after__.call(fn, supr, o);
 
-  (fn.implement = implement)(o);
+  fn.implement = implement
+  fn.implement(o)
+  if(supr.__after__) supr.__after__.call(fn, supr, o);
   fn.extend = extend;
   return fn;
 }
@@ -2986,6 +3361,7 @@ extend(String.prototype, {
     return this.replace(/^\s+|\s+$/g, '');
   }
 });
+
 
 // Array proto;
 extend(Array.prototype, {
@@ -3020,7 +3396,7 @@ extend(Array.prototype, {
 
 // Function proto;
 extend(Function.prototype, {
-  bind: function(context, arg){
+  bind: function(context){
     var fn = this;
     var preArgs = slice.call(arguments, 1);
     return function(){
@@ -3055,6 +3431,263 @@ extend(Array, {
 })
 
 });
+require.register("regularjs/src/helper/parse.js", function(exports, require, module){
+var exprCache = require('../env').exprCache;
+var _ = require("../util");
+var Parser = require("../parser/Parser.js");
+module.exports = {
+  expression: function(expr, simple){
+    // @TODO cache
+    if( typeof expr === 'string' && ( expr = expr.trim() ) ){
+      expr = exprCache.get( expr ) || exprCache.set( expr, new Parser( expr, { mode: 2, expression: true } ).expression() )
+    }
+    if(expr) return expr;
+  },
+  parse: function(template){
+    return new Parser(template).parse();
+  }
+}
+
+
+});
+require.register("regularjs/src/helper/watcher.js", function(exports, require, module){
+var _ = require('../util.js');
+var parseExpression = require('./parse.js').expression;
+
+
+function Watcher(){}
+
+var methods = {
+  $watch: function(expr, fn, options){
+    var get, once, test, rlen, extra = this.__ext__; //records length
+    if(!this._watchers) this._watchers = [];
+
+    options = options || {};
+    if(options === true){
+       options = { deep: true }
+    }
+    var uid = _.uid('w_');
+    if(Array.isArray(expr)){
+      var tests = [];
+      for(var i = 0,len = expr.length; i < len; i++){
+          tests.push(this.$expression(expr[i]).get)
+      }
+      var prev = [];
+      test = function(context){
+        var equal = true;
+        for(var i =0, len = tests.length; i < len; i++){
+          var splice = tests[i](context, extra);
+          if(!_.equals(splice, prev[i])){
+             equal = false;
+             prev[i] = _.clone(splice);
+          }
+        }
+        return equal? false: prev;
+      }
+    }else{
+      expr = this._touchExpr( parseExpression(expr) );
+      get = expr.get;
+      once = expr.once;
+    }
+
+    var watcher = {
+      id: uid, 
+      get: get, 
+      fn: fn, 
+      once: once, 
+      force: options.force,
+      test: test,
+      deep: options.deep
+    }
+    
+    this._watchers.push( watcher );
+
+    rlen = this._records && this._records.length;
+    if(rlen) this._records[rlen-1].push(uid)
+    // init state.
+    if(options.init === true){
+      this.$phase = 'digest';
+      this._checkSingleWatch( watcher, this._watchers.length-1 );
+      this.$phase = null;
+    }
+    return uid;
+  },
+  $unwatch: function(uid){
+    if(!this._watchers) this._watchers = [];
+    if(Array.isArray(uid)){
+      for(var i =0, len = uid.length; i < len; i++){
+        this.$unwatch(uid[i]);
+      }
+    }else{
+      var watchers = this._watchers, watcher, wlen;
+      if(!uid || !watchers || !(wlen = watchers.length)) return;
+      for(;wlen--;){
+        watcher = watchers[wlen];
+        if(watcher && watcher.id === uid ){
+          watchers.splice(wlen, 1);
+        }
+      }
+    }
+  },
+  $expression: function(value){
+    return this._touchExpr(parseExpression(value))
+  },
+  /**
+   * the whole digest loop ,just like angular, it just a dirty-check loop;
+   * @param  {String} path  now regular process a pure dirty-check loop, but in parse phase, 
+   *                  Regular's parser extract the dependencies, in future maybe it will change to dirty-check combine with path-aware update;
+   * @return {Void}   
+   */
+
+  $digest: function(){
+    if(this.$phase === 'digest' || this._mute) return;
+    this.$phase = 'digest';
+    var dirty = false, n =0;
+    while(dirty = this._digest()){
+
+      if((++n) > 20){ // max loop
+        throw 'there may a circular dependencies reaches' 
+      }
+    }
+    if( n > 0 && this.$emit) this.$emit("$update");
+    this.$phase = null;
+  },
+  // private digest logic
+  _digest: function(){
+    // if(this.context) return this.context.$digest();
+    // if(this.$emit) this.$emit('digest');
+    var watchers = this._watchers;
+    var dirty = false, children, watcher, watcherDirty;
+    if(watchers && watchers.length){
+      for(var i = 0, len = watchers.length;i < len; i++){
+        watcher = watchers[i];
+        watcherDirty = this._checkSingleWatch(watcher, i);
+        if(watcherDirty) dirty = true;
+      }
+    }
+    // check children's dirty.
+    children = this._children;
+    if(children && children.length){
+      for(var m = 0, mlen = children.length; m < mlen; m++){
+        if(children[m]._digest()) dirty = true;
+      }
+    }
+    return dirty;
+  },
+  // check a single one watcher 
+  _checkSingleWatch: function(watcher, i){
+    var dirty = false;
+    if(!watcher) return;
+    if(watcher.test) { //multi 
+      var result = watcher.test(this);
+      if(result){
+        dirty = true;
+        watcher.fn.apply(this, result)
+      }
+    }else{
+
+      var now = watcher.get(this);
+      var last = watcher.last;
+      var eq = true;
+
+      if(_.typeOf( now ) === 'object' && watcher.deep){
+        if(!watcher.last){
+           eq = false;
+         }else{
+          for(var j in now){
+            if(watcher.last[j] !== now[j]){
+              eq = false;
+              break;
+            }
+          }
+          if(eq !== false){
+            for(var n in last){
+              if(last[n] !== now[n]){
+                eq = false;
+                break;
+              }
+            }
+          }
+        }
+      }else{
+        eq = _.equals(now, watcher.last);
+      }
+      if(eq === false || watcher.force){ // in some case. if undefined, we must force digest.
+        eq = false;
+        watcher.force = null;
+        dirty = true;
+        watcher.fn.call(this, now, watcher.last);
+        if(typeof now !== 'object'|| watcher.deep){
+          watcher.last = _.clone(now);
+        }else{
+          watcher.last = now;
+        }
+      }else{ // if eq == true
+        if( _.typeOf(eq) === 'array' && eq.length ){
+          watcher.last = _.clone(now);
+          watcher.fn.call(this, now, eq);
+          dirty = true;
+        }else{
+          eq = true;
+        }
+      }
+      // @TODO
+      if(dirty && watcher.once) this._watchers.splice(i, 1);
+
+      return dirty;
+    }
+  },
+
+  /**
+   * **tips**: whatever param you passed in $update, after the function called, dirty-check(digest) phase will enter;
+   * 
+   * @param  {Function|String|Expression} path  
+   * @param  {Whatever} value optional, when path is Function, the value is ignored
+   * @return {this}     this 
+   */
+  $set: function(path, value){
+    if(path != null){
+      var type = _.typeOf(path);
+      if( type === 'string' || path.type === 'expression' ){
+        path = this.$expression(path);
+        path.set(this, value);
+      }else if(type === 'function'){
+        path.call(this, this.data);
+      }else{
+        for(var i in path) {
+          this.$set(i, path[i])
+        }
+      }
+    }
+  },
+  $get: function(expr)  {
+    return this.$expression(expr).get(this);
+  },
+  $update: function(){
+    this.$set.apply(this, arguments);
+    if(this.$root) this.$root.$digest()
+  },
+  // auto collect watchers for logic-control.
+  _record: function(){
+    if(!this._records) this._records = [];
+    this._records.push([]);
+  },
+  _release: function(){
+    return this._records.pop();
+  }
+}
+
+
+_.extend(Watcher.prototype, methods)
+
+
+Watcher.mixTo = function(obj){
+  obj = typeof obj === "function" ? obj.prototype : obj;
+  return _.extend(obj, methods)
+}
+
+module.exports = Watcher;
+});
 require.register("regularjs/src/helper/event.js", function(exports, require, module){
 // simplest event emitter 60 lines
 // ===============================
@@ -3066,68 +3699,299 @@ var API = {
                 this.$on(i, event[i]);
             }
         }else{
-            var handles = this._handles || (this._handles = {}),
+            // @patch: for list
+            var context = this;
+            var handles = context._handles || (context._handles = {}),
                 calls = handles[event] || (handles[event] = []);
             calls.push(fn);
         }
         return this;
     },
     $off: function(event, fn) {
-        if(!this._handles) return;
-        if(!event) this._handles = [];
-        var handles = this._handles,
+        var context = this;
+        if(!context._handles) return;
+        if(!event) this._handles = {};
+        var handles = context._handles,
             calls;
 
         if (calls = handles[event]) {
             if (!fn) {
                 handles[event] = [];
-                return this;
+                return context;
             }
             for (var i = 0, len = calls.length; i < len; i++) {
                 if (fn === calls[i]) {
                     calls.splice(i, 1);
-                    return this;
+                    return context;
                 }
             }
         }
-        return this;
+        return context;
     },
     // bubble event
     $emit: function(event){
-        var handles = this._handles, calls;
+        // @patch: for list
+        var context = this;
+        var handles = context._handles, calls, args, type;
         if(!event) return;
-        if(typeof event === "object"){
-           var type = event.type, 
-            args = event.data || [],
-            stop = event.stop;
-        }else{
-        var args = slice.call(arguments, 1),
-            type = event,
-            $parent = this.$parent;
+        var args = slice.call(arguments, 1);
+        var type = event;
+
+        if(!handles) return context;
+        if(calls = handles[type.slice(1)]){
+            for (var j = 0, len = calls.length; j < len; j++) {
+                calls[j].apply(context, args)
+            }
         }
-        if (!handles || !(calls = handles[type])) return this;
+        if (!(calls = handles[type])) return context;
         for (var i = 0, len = calls.length; i < len; i++) {
-            calls[i].apply(this, args)
+            calls[i].apply(context, args)
         }
-        // if(calls.length) this.$update();
-        return this;
+        // if(calls.length) context.$update();
+        return context;
     },
     // capture  event
-    $broadcast: function(event){
+    $broadcast: function(){
         
     }
 }
 // container class
-function Event(handles) {
+function Event() {
   if (arguments.length) this.$on.apply(this, arguments);
-};
+}
 _.extend(Event.prototype, API)
 
 Event.mixTo = function(obj){
-  obj = typeof obj == "function" ? obj.prototype : obj;
+  obj = typeof obj === "function" ? obj.prototype : obj;
   _.extend(obj, API)
 }
 module.exports = Event;
+});
+require.register("regularjs/src/helper/animate.js", function(exports, require, module){
+var _ = require("../util");
+var dom  = require("../dom.js");
+var animate = {};
+var env = require("../env.js");
+
+
+var 
+  transitionEnd = 'transitionend', 
+  animationEnd = 'animationend', 
+  transitionProperty = 'transition', 
+  animationProperty = 'animation';
+
+if(!('ontransitionend' in window)){
+  if('onwebkittransitionend' in window) {
+    
+    // Chrome/Saf (+ Mobile Saf)/Android
+    transitionEnd += ' webkitTransitionEnd';
+    transitionProperty = 'webkitTransition'
+  } else if('onotransitionend' in dom.tNode || navigator.appName === 'Opera') {
+
+    // Opera
+    transitionEnd += ' oTransitionEnd';
+    transitionProperty = 'oTransition';
+  }
+}
+if(!('onanimationend' in window)){
+  if ('onwebkitanimationend' in window){
+    // Chrome/Saf (+ Mobile Saf)/Android
+    animationEnd += ' webkitAnimationEnd';
+    animationProperty = 'webkitAnimation';
+
+  }else if ('onoanimationend' in dom.tNode){
+    // Opera
+    animationEnd += ' oAnimationEnd';
+    animationProperty = 'oAnimation';
+  }
+}
+
+/**
+ * inject node with animation
+ * @param  {[type]} node      [description]
+ * @param  {[type]} refer     [description]
+ * @param  {[type]} direction [description]
+ * @return {[type]}           [description]
+ */
+animate.inject = function( node, refer ,direction, callback ){
+  callback = callback || _.noop;
+  if( Array.isArray(node) ){
+    var fragment = dom.fragment();
+    var count=0;
+
+    for(var i = 0,len = node.length;i < len; i++ ){
+      fragment.appendChild(node[i]); 
+    }
+    dom.inject(fragment, refer, direction);
+
+    // if all nodes is done, we call the callback
+    var enterCallback = function (){
+      count++;
+      if( count === len ) callback();
+    }
+    if(len === count) callback();
+    for( i = 0; i < len; i++ ){
+      if(node[i].onenter){
+        node[i].onenter(enterCallback);
+      }else{
+        enterCallback();
+      }
+    }
+  }else{
+    dom.inject( node, refer, direction );
+    if(node.onenter){
+      node.onenter(callback)
+    }else{
+      callback();
+    }
+  }
+}
+
+/**
+ * remove node with animation
+ * @param  {[type]}   node     [description]
+ * @param  {Function} callback [description]
+ * @return {[type]}            [description]
+ */
+animate.remove = function(node, callback){
+  if(node.onleave){
+    node.onleave(function(){
+      removeDone(node, callback)
+    })
+  }else{
+    removeDone(node, callback)
+  }
+}
+
+var removeDone = function (node, callback){
+    dom.remove(node);
+    callback && callback();
+}
+
+
+
+animate.startClassAnimate = function ( node, className,  callback, mode ){
+  var activeClassName, timeout, tid, onceAnim;
+  if( (!animationEnd && !transitionEnd) || env.isRunning ){
+    return callback();
+  }
+
+  onceAnim = _.once(function onAnimateEnd(){
+    if(tid) clearTimeout(tid);
+
+    if(mode === 2) {
+      dom.delClass(node, activeClassName);
+    }
+    if(mode !== 3){ // mode hold the class
+      dom.delClass(node, className);
+    }
+    dom.off(node, animationEnd, onceAnim)
+    dom.off(node, transitionEnd, onceAnim)
+
+    callback();
+
+  });
+  if(mode === 2){ // auto removed
+    dom.addClass( node, className );
+
+    activeClassName = className.split(/\s+/).map(function(name){
+       return name + '-active';
+    }).join(" ");
+
+    dom.nextReflow(function(){
+      dom.addClass( node, activeClassName );
+      timeout = getMaxTimeout( node );
+      tid = setTimeout( onceAnim, timeout );
+    });
+
+  }else{
+
+    dom.nextReflow(function(){
+      dom.addClass( node, className );
+      timeout = getMaxTimeout( node );
+      tid = setTimeout( onceAnim, timeout );
+    });
+
+  }
+
+
+  dom.on( node, animationEnd, onceAnim )
+  dom.on( node, transitionEnd, onceAnim )
+  return onceAnim;
+}
+
+
+animate.startStyleAnimate = function(node, styles, callback){
+  var timeout, onceAnim, tid;
+
+  dom.nextReflow(function(){
+    dom.css( node, styles );
+    timeout = getMaxTimeout( node );
+    tid = setTimeout( onceAnim, timeout );
+  });
+
+
+  onceAnim = _.once(function onAnimateEnd(){
+    if(tid) clearTimeout(tid);
+
+    dom.off(node, animationEnd, onceAnim)
+    dom.off(node, transitionEnd, onceAnim)
+
+    callback();
+
+  });
+
+  dom.on( node, animationEnd, onceAnim )
+  dom.on( node, transitionEnd, onceAnim )
+
+  return onceAnim;
+}
+
+
+/**
+ * get maxtimeout
+ * @param  {Node} node 
+ * @return {[type]}   [description]
+ */
+function getMaxTimeout(node){
+  var timeout = 0,
+    tDuration = 0,
+    tDelay = 0,
+    aDuration = 0,
+    aDelay = 0,
+    ratio = 5 / 3,
+    styles ;
+
+  if(window.getComputedStyle){
+
+    styles = window.getComputedStyle(node),
+    tDuration = getMaxTime( styles[transitionProperty + 'Duration']) || tDuration;
+    tDelay = getMaxTime( styles[transitionProperty + 'Delay']) || tDelay;
+    aDuration = getMaxTime( styles[animationProperty + 'Duration']) || aDuration;
+    aDelay = getMaxTime( styles[animationProperty + 'Delay']) || aDelay;
+    timeout = Math.max( tDuration+tDelay, aDuration + aDelay );
+
+  }
+  return timeout * 1000 * ratio;
+}
+
+function getMaxTime(str){
+
+  var maxTimeout = 0, time;
+
+  if(!str) return 0;
+
+  str.split(",").forEach(function(str){
+
+    time = parseFloat(str);
+    if( time > maxTimeout ) maxTimeout = time;
+
+  });
+
+  return maxTimeout;
+}
+
+module.exports = animate;
 });
 require.register("regularjs/src/helper/combine.js", function(exports, require, module){
 // some nested  operation in ast 
@@ -3139,21 +4003,26 @@ var combine = module.exports = {
 
   // get the initial dom in object
   node: function(item){
-    var children;
+    var children,node;
     if(item.element) return item.element;
     if(typeof item.node === "function") return item.node();
     if(typeof item.nodeType === "number") return item;
     if(item.group) return combine.node(item.group)
     if(children = item.children){
-      if(children.length == 1){
-        var node = combine.node(children[0])
-        return node;
+      if(children.length === 1){
+        
+        return combine.node(children[0]);
       }
-      var fragment = dom.fragment();
+      var nodes = [];
       for(var i = 0, len = children.length; i < len; i++ ){
-        fragment.appendChild(combine.node(children[i]))
+        node = combine.node(children[i]);
+        if(Array.isArray(node)){
+          nodes.push.apply(nodes, node)
+        }else{
+          nodes.push(node)
+        }
       }
-      return fragment;
+      return nodes;
     }
   },
 
@@ -3169,28 +4038,335 @@ var combine = module.exports = {
 
   },
 
-  destroy: function(item){
+  destroy: function(item, first){
     if(!item) return;
     if(Array.isArray(item)){
       for(var i = 0, len = item.length; i < len; i++ ){
-        combine.destroy(item[i]);
+        combine.destroy(item[i], first);
       }
     }
     var children = item.children;
-    if(typeof item.destroy === "function") return item.destroy();
-    if(typeof item.nodeType === "number") return dom.remove(item);
+    if(typeof item.destroy === "function") return item.destroy(first);
+    if(typeof item.nodeType === "number" && first)  dom.remove(item);
     if(children && children.length){
-      combine.destroy(item);
+      combine.destroy(children, true);
       item.children = null;
     }
   }
 
 }
 });
+require.register("regularjs/src/helper/entities.js", function(exports, require, module){
+// http://stackoverflow.com/questions/1354064/how-to-convert-characters-to-html-entities-using-plain-javascript
+var entities = {
+  'quot':34, 
+  'amp':38, 
+  'apos':39, 
+  'lt':60, 
+  'gt':62, 
+  'nbsp':160, 
+  'iexcl':161, 
+  'cent':162, 
+  'pound':163, 
+  'curren':164, 
+  'yen':165, 
+  'brvbar':166, 
+  'sect':167, 
+  'uml':168, 
+  'copy':169, 
+  'ordf':170, 
+  'laquo':171, 
+  'not':172, 
+  'shy':173, 
+  'reg':174, 
+  'macr':175, 
+  'deg':176, 
+  'plusmn':177, 
+  'sup2':178, 
+  'sup3':179, 
+  'acute':180, 
+  'micro':181, 
+  'para':182, 
+  'middot':183, 
+  'cedil':184, 
+  'sup1':185, 
+  'ordm':186, 
+  'raquo':187, 
+  'frac14':188, 
+  'frac12':189, 
+  'frac34':190, 
+  'iquest':191, 
+  'Agrave':192, 
+  'Aacute':193, 
+  'Acirc':194, 
+  'Atilde':195, 
+  'Auml':196, 
+  'Aring':197, 
+  'AElig':198, 
+  'Ccedil':199, 
+  'Egrave':200, 
+  'Eacute':201, 
+  'Ecirc':202, 
+  'Euml':203, 
+  'Igrave':204, 
+  'Iacute':205, 
+  'Icirc':206, 
+  'Iuml':207, 
+  'ETH':208, 
+  'Ntilde':209, 
+  'Ograve':210, 
+  'Oacute':211, 
+  'Ocirc':212, 
+  'Otilde':213, 
+  'Ouml':214, 
+  'times':215, 
+  'Oslash':216, 
+  'Ugrave':217, 
+  'Uacute':218, 
+  'Ucirc':219, 
+  'Uuml':220, 
+  'Yacute':221, 
+  'THORN':222, 
+  'szlig':223, 
+  'agrave':224, 
+  'aacute':225, 
+  'acirc':226, 
+  'atilde':227, 
+  'auml':228, 
+  'aring':229, 
+  'aelig':230, 
+  'ccedil':231, 
+  'egrave':232, 
+  'eacute':233, 
+  'ecirc':234, 
+  'euml':235, 
+  'igrave':236, 
+  'iacute':237, 
+  'icirc':238, 
+  'iuml':239, 
+  'eth':240, 
+  'ntilde':241, 
+  'ograve':242, 
+  'oacute':243, 
+  'ocirc':244, 
+  'otilde':245, 
+  'ouml':246, 
+  'divide':247, 
+  'oslash':248, 
+  'ugrave':249, 
+  'uacute':250, 
+  'ucirc':251, 
+  'uuml':252, 
+  'yacute':253, 
+  'thorn':254, 
+  'yuml':255, 
+  'fnof':402, 
+  'Alpha':913, 
+  'Beta':914, 
+  'Gamma':915, 
+  'Delta':916, 
+  'Epsilon':917, 
+  'Zeta':918, 
+  'Eta':919, 
+  'Theta':920, 
+  'Iota':921, 
+  'Kappa':922, 
+  'Lambda':923, 
+  'Mu':924, 
+  'Nu':925, 
+  'Xi':926, 
+  'Omicron':927, 
+  'Pi':928, 
+  'Rho':929, 
+  'Sigma':931, 
+  'Tau':932, 
+  'Upsilon':933, 
+  'Phi':934, 
+  'Chi':935, 
+  'Psi':936, 
+  'Omega':937, 
+  'alpha':945, 
+  'beta':946, 
+  'gamma':947, 
+  'delta':948, 
+  'epsilon':949, 
+  'zeta':950, 
+  'eta':951, 
+  'theta':952, 
+  'iota':953, 
+  'kappa':954, 
+  'lambda':955, 
+  'mu':956, 
+  'nu':957, 
+  'xi':958, 
+  'omicron':959, 
+  'pi':960, 
+  'rho':961, 
+  'sigmaf':962, 
+  'sigma':963, 
+  'tau':964, 
+  'upsilon':965, 
+  'phi':966, 
+  'chi':967, 
+  'psi':968, 
+  'omega':969, 
+  'thetasym':977, 
+  'upsih':978, 
+  'piv':982, 
+  'bull':8226, 
+  'hellip':8230, 
+  'prime':8242, 
+  'Prime':8243, 
+  'oline':8254, 
+  'frasl':8260, 
+  'weierp':8472, 
+  'image':8465, 
+  'real':8476, 
+  'trade':8482, 
+  'alefsym':8501, 
+  'larr':8592, 
+  'uarr':8593, 
+  'rarr':8594, 
+  'darr':8595, 
+  'harr':8596, 
+  'crarr':8629, 
+  'lArr':8656, 
+  'uArr':8657, 
+  'rArr':8658, 
+  'dArr':8659, 
+  'hArr':8660, 
+  'forall':8704, 
+  'part':8706, 
+  'exist':8707, 
+  'empty':8709, 
+  'nabla':8711, 
+  'isin':8712, 
+  'notin':8713, 
+  'ni':8715, 
+  'prod':8719, 
+  'sum':8721, 
+  'minus':8722, 
+  'lowast':8727, 
+  'radic':8730, 
+  'prop':8733, 
+  'infin':8734, 
+  'ang':8736, 
+  'and':8743, 
+  'or':8744, 
+  'cap':8745, 
+  'cup':8746, 
+  'int':8747, 
+  'there4':8756, 
+  'sim':8764, 
+  'cong':8773, 
+  'asymp':8776, 
+  'ne':8800, 
+  'equiv':8801, 
+  'le':8804, 
+  'ge':8805, 
+  'sub':8834, 
+  'sup':8835, 
+  'nsub':8836, 
+  'sube':8838, 
+  'supe':8839, 
+  'oplus':8853, 
+  'otimes':8855, 
+  'perp':8869, 
+  'sdot':8901, 
+  'lceil':8968, 
+  'rceil':8969, 
+  'lfloor':8970, 
+  'rfloor':8971, 
+  'lang':9001, 
+  'rang':9002, 
+  'loz':9674, 
+  'spades':9824, 
+  'clubs':9827, 
+  'hearts':9829, 
+  'diams':9830, 
+  'OElig':338, 
+  'oelig':339, 
+  'Scaron':352, 
+  'scaron':353, 
+  'Yuml':376, 
+  'circ':710, 
+  'tilde':732, 
+  'ensp':8194, 
+  'emsp':8195, 
+  'thinsp':8201, 
+  'zwnj':8204, 
+  'zwj':8205, 
+  'lrm':8206, 
+  'rlm':8207, 
+  'ndash':8211, 
+  'mdash':8212, 
+  'lsquo':8216, 
+  'rsquo':8217, 
+  'sbquo':8218, 
+  'ldquo':8220, 
+  'rdquo':8221, 
+  'bdquo':8222, 
+  'dagger':8224, 
+  'Dagger':8225, 
+  'permil':8240, 
+  'lsaquo':8249, 
+  'rsaquo':8250, 
+  'euro':8364
+}
+
+
+
+module.exports  = entities;
+});
+require.register("regularjs/src/helper/filter.js", function(exports, require, module){
+
+var f = module.exports = {};
+
+// json:  two way filter.
+//  - get: JSON.stringify
+//  - set: JSON.parse
+//  - example: title | json
+f.json = {
+  get: function( value ){
+    return typeof JSON !== 'undefined'? JSON.stringify(value): value;
+  },
+  set: function( value ){
+    return typeof JSON !== 'undefined'? JSON.parse(value) : value;
+  }
+}
+
+f.last = function(arr){
+  return arr && arr[arr.length - 1];
+}
+
+f.every = {
+  get: function(arr, key){
+    key = key || 'checked';
+    arr = arr || [];
+
+    var len = arr.length;
+    for(;len--;){
+      if( !arr[len][key] ) return false;
+    }
+    return true
+  },
+  set: function(checkAll, key, arr){
+    arr = arr || [];
+    checkAll = !!checkAll;
+
+    var len = arr.length;
+    for(;len--;){
+      arr[len][key] = checkAll;
+    }
+    return arr;
+  }
+}
+});
 require.register("regularjs/src/directive/base.js", function(exports, require, module){
 // Regular
 var _ = require("../util.js");
 var dom = require("../dom.js");
+var animate = require("../helper/animate.js");
 var Regular = require("../Regular.js");
 
 
@@ -3202,13 +4378,11 @@ require("./form.js");
 // **warn**: class inteplation will override this directive 
 
 Regular.directive('r-class', function(elem, value){
-  if(value.type !== 'expression') value = Regular.expression(value);
-
   this.$watch(value, function(nvalue){
     var className = ' '+ elem.className.replace(/\s+/g, ' ') +' ';
     for(var i in nvalue) if(nvalue.hasOwnProperty(i)){
       className = className.replace(' ' + i + ' ',' ');
-      if(nvalue[i] == true){
+      if(nvalue[i] === true){
         className += i+' ';
       }
     }
@@ -3220,8 +4394,6 @@ Regular.directive('r-class', function(elem, value){
 // **warn**: style inteplation will override this directive 
 
 Regular.directive('r-style', function(elem, value){
-  if(value.type !== 'expression') value = Regular.expression(value);
-
   this.$watch(value, function(nvalue){
     for(var i in nvalue) if(nvalue.hasOwnProperty(i)){
       dom.css(elem, i, nvalue[i]);
@@ -3233,18 +4405,38 @@ Regular.directive('r-style', function(elem, value){
 // Example: <div r-hide={{items.length > 0}}></div>
 
 Regular.directive('r-hide', function(elem, value){
-
-
-  if(value.type !== 'expression') value = Regular.expression(value);
-
+  var preBool = null, compelete;
   this.$watch(value, function(nvalue){
-    if(!!nvalue){
-      elem.style.display = "none";
+    var bool = !!nvalue;
+    if(bool === preBool) return; 
+    preBool = bool;
+    if(bool){
+      if(elem.onleave){
+        compelete = elem.onleave(function(){
+          elem.style.display = "none"
+          compelete = null;
+        })
+      }else{
+        elem.style.display = "none"
+      }
+      
     }else{
-      elem.style.display = ""
+      if(compelete) compelete();
+      elem.style.display = "";
+      if(elem.onenter){
+        elem.onenter();
+      }
     }
   });
 
+});
+
+// unescaped inteplation. xss is not be protect
+Regular.directive('r-html', function(elem, value){
+  this.$watch(value, function(nvalue){
+    nvalue = nvalue || "";
+    dom.html(elem, nvalue)
+  }, {force: true});
 });
 
 
@@ -3286,7 +4478,7 @@ Regular.directive("r-model", function(elem, value){
 
   if( modelHandlers[sign] ) return modelHandlers[sign].call(this, elem, value);
   else if(tag === "input"){
-    return modelHandlers["text"].call(this, elem, value);
+    return modelHandlers.text.call(this, elem, value);
   }
 });
 
@@ -3296,10 +4488,7 @@ Regular.directive("r-model", function(elem, value){
 
 function initSelect( elem, parsed){
   var self = this;
-  var inProgress = false;
-  var value = elem.value;
-  this.$watch(parsed, function(newValue, oldValue){
-    if(inProgress) return;
+  this.$watch(parsed, function(newValue){
     var children = _.slice(elem.getElementsByTagName('option'))
     children.forEach(function(node, index){
       if(node.value == newValue){
@@ -3308,18 +4497,17 @@ function initSelect( elem, parsed){
     })
   });
 
-  function handler(ev){
+  function handler(){
     parsed.set(self, this.value);
-    inProgress = true;
+    parsed.last = this.value;
     self.$update();
-    inProgress = false;
   }
+
   dom.on(elem, "change", handler);
-  this.$on('init', function(){
-    if(parsed.get(self) === undefined){
-       parsed.set(self, elem.value);
-    }
-  });
+  
+  if(parsed.get(self) === undefined && elem.value){
+     parsed.set(self, elem.value);
+  }
   return function destroy(){
     dom.off(elem, "change", handler);
   }
@@ -3328,10 +4516,8 @@ function initSelect( elem, parsed){
 // input,textarea binding
 
 function initText(elem, parsed){
-  var inProgress = false;
   var self = this;
-  this.$watch(parsed, function(newValue, oldValue){
-    if(inProgress){ return; }
+  this.$watch(parsed, function(newValue){
     if(elem.value !== newValue) elem.value = newValue == null? "": "" + newValue;
   });
 
@@ -3342,16 +4528,14 @@ function initText(elem, parsed){
       _.nextTick(function(){
         var value = that.value
         parsed.set(self, value);
-        inProgress = true;
+        parsed.last = value;
         self.$update();
       })
     }else{
         var value = that.value
         parsed.set(self, value);
-        inProgress = true;
         self.$update();
     }
-    inProgress = false;
   };
 
   if(dom.msie !== 9 && "oninput" in dom.tNode ){
@@ -3362,11 +4546,9 @@ function initText(elem, parsed){
     dom.on(elem, "cut", handler)
     dom.on(elem, "change", handler)
   }
-  this.$on('init', function(){
-    if(parsed.get(self) === undefined){
-       parsed.set(self, elem.value);
-    }
-  })
+  if(parsed.get(self) === undefined && elem.value){
+     parsed.set(self, elem.value);
+  }
   return function destroy(){
     if(dom.msie !== 9 && "oninput" in dom.tNode ){
       elem.removeEventListener("input", handler );
@@ -3383,27 +4565,22 @@ function initText(elem, parsed){
 // input:checkbox  binding
 
 function initCheckBox(elem, parsed){
-  var inProgress = false;
   var self = this;
-  this.$watch(parsed, function(newValue, oldValue){
-    if(inProgress) return;
+  this.$watch(parsed, function(newValue){
     dom.attr(elem, 'checked', !!newValue);
   });
 
-  var handler = function handler(ev){
+  var handler = function handler(){
     var value = this.checked;
     parsed.set(self, value);
-    inProgress= true;
+    parsed.last = value;
     self.$update();
-    inProgress = false;
   }
   if(parsed.set) dom.on(elem, "change", handler)
-  this.$on('init', function(){
 
-    if(parsed.get(self) === undefined){
-      parsed.set(self, elem.checked);
-    }
-  });
+  if(parsed.get(self) === undefined){
+    parsed.set(self, !!elem.checked);
+  }
 
   return function destroy(){
     if(parsed.set) dom.off(elem, "change", handler)
@@ -3415,26 +4592,25 @@ function initCheckBox(elem, parsed){
 
 function initRadio(elem, parsed){
   var self = this;
-  var inProgress = false;
-  this.$watch(parsed, function(newValue, oldValue){
-    if(inProgress) return;
-    if(newValue === elem.value) elem.checked = true;
+  this.$watch(parsed, function( newValue ){
+    if(newValue == elem.value) elem.checked = true;
+    else elem.checked = false;
   });
 
 
-  var handler = function handler(ev){
+  var handler = function handler(){
     var value = this.value;
     parsed.set(self, value);
-    inProgress= true;
+    parsed.last = value;
     self.$update();
-    inProgress = false;
   }
   if(parsed.set) dom.on(elem, "change", handler)
-  this.$on('init', function(){
-    if(parsed.get(self) === undefined){
-      if(elem.checked) parsed.set(self, elem.value);
+  // beacuse only after compile(init), the dom structrue is exsit. 
+  if(parsed.get(self) === undefined){
+    if(elem.checked) {
+      parsed.set(self, elem.value);
     }
-  });
+  }
 
   return function destroy(){
     if(parsed.set) dom.off(elem, "change", handler)
@@ -3442,66 +4618,325 @@ function initRadio(elem, parsed){
 }
 
 });
+require.register("regularjs/src/directive/animation.js", function(exports, require, module){
+var // packages
+  _ = require("../util.js"),
+ animate = require("../helper/animate.js"),
+ dom = require("../dom.js"),
+ Regular = require("../Regular.js");
+
+
+var // variables
+  rClassName = /^[-\w]+(\s[-\w]+)*$/,
+  rCommaSep = /[\r\n\f ]*,[\r\n\f ]*(?=\w+\:)/, //  dont split comma in  Expression
+  rStyles = /^\{.*\}$/, //  for Simpilfy
+  rSpace = /\s+/, //  for Simpilfy
+  WHEN_COMMAND = "when",
+  EVENT_COMMAND = "on",
+  THEN_COMMAND = "then";
+
+/**
+ * Animation Plugin
+ * @param {Component} Component 
+ */
+
+
+function createSeed(type){
+
+  var steps = [], current = 0, callback = _.noop;
+  var key;
+
+  var out = {
+    type: type,
+    start: function(cb){
+      key = _.uid();
+      if(typeof cb === "function") callback = cb;
+      if(current> 0 ){
+        current = 0 ;
+      }else{
+        out.step();
+      }
+      return out.compelete;
+    },
+    compelete: function(){
+      key = null;
+      callback && callback();
+      callback = _.noop;
+      current = 0;
+    },
+    step: function(){
+      if(steps[current]) steps[current ]( out.done.bind(out, key) );
+    },
+    done: function(pkey){
+      if(pkey !== key) return; // means the loop is down
+      if( current < steps.length - 1 ) {
+        current++;
+        out.step();
+      }else{
+        out.compelete();
+      }
+    },
+    push: function(step){
+      steps.push(step)
+    }
+  }
+
+  return out;
+}
+
+Regular._addProtoInheritCache("animation")
+
+
+// builtin animation
+Regular.animation({
+  "wait": function( step ){
+    var timeout = parseInt( step.param ) || 0
+    return function(done){
+      // _.log("delay " + timeout)
+      setTimeout( done, timeout );
+    }
+  },
+  "class": function(step){
+    var tmp = step.param.split(","),
+      className = tmp[0] || "",
+      mode = parseInt(tmp[1]) || 1;
+
+    return function(done){
+      // _.log(className)
+      animate.startClassAnimate( step.element, className , done, mode );
+    }
+  },
+  "call": function(step){
+    var fn = this.$expression(step.param).get, self = this;
+    return function(done){
+      // _.log(step.param, 'call')
+      fn(self);
+      self.$update();
+      done()
+    }
+  },
+  "emit": function(step){
+    var param = step.param;
+    var tmp = param.split(","),
+      evt = tmp[0] || "",
+      args = tmp[1]? this.$expression(tmp[1]).get: null;
+
+    if(!evt) throw "you shoud specified a eventname in emit command";
+
+    var self = this;
+    return function(done){
+      self.$emit(evt, args? args(self) : undefined);
+      done();
+    }
+  },
+  // style: left {10}px,
+  style: function(step){
+    var styles = {}, 
+      param = step.param,
+      pairs = param.split(","), valid;
+    pairs.forEach(function(pair){
+      pair = pair.trim();
+      if(pair){
+        var tmp = pair.split( rSpace ),
+          name = tmp.shift(),
+          value = tmp.join(" ");
+
+        if( !name || !value ) throw "invalid style in command: style";
+        styles[name] = value;
+        valid = true;
+      }
+    })
+
+    return function(done){
+      if(valid){
+        animate.startStyleAnimate(step.element, styles, done);
+      }else{
+        done();
+      }
+    }
+  }
+})
+
+
+
+// hancdle the r-animation directive
+// el : the element to process
+// value: the directive value
+function processAnimate( element, value ){
+  value = value.trim();
+
+  var composites = value.split(";"), 
+    composite, context = this, seeds = [], seed, destroies = [], destroy,
+    command, param , current = 0, tmp, animator, self = this;
+
+  function reset( type ){
+    seed && seeds.push( seed )
+    seed = createSeed( type );
+  }
+
+  function whenCallback(start, value){
+    if( !!value ) start()
+  }
+
+  function animationDestroy(element){
+    return function(){
+      delete element.onenter;
+      delete element.onleave;
+    } 
+  }
+
+  for( var i = 0, len = composites.length; i < len; i++ ){
+
+    composite = composites[i];
+    tmp = composite.split(":");
+    command = tmp[0] && tmp[0].trim();
+    param = tmp[1] && tmp[1].trim();
+
+    if( !command ) continue;
+
+    if( command === WHEN_COMMAND ){
+      reset("when");
+      this.$watch(param, whenCallback.bind( this, seed.start ) );
+      continue;
+    }
+
+    if( command === EVENT_COMMAND){
+      reset(param);
+      if(param === "leave"){
+        element.onleave = seed.start;
+      }else if(param === "enter"){
+        element.onenter = seed.start;
+      }else{
+        // destroy = this._handleEvent( element, param, seed.start );
+        this.$on(param, seed.start)
+        destroy = this.$off.bind(this, param, seed.start);
+      }
+
+      // @TODO add
+      destroies.push( destroy? destroy : animationDestroy(element) );
+      destroy = null;
+      continue
+    }
+
+    var animator =  Regular.animation(command) 
+    if( animator && seed ){
+      seed.push(
+        animator.call(this,{
+          element: element,
+          done: seed.done,
+          param: param 
+        })
+      )
+    }else{
+      throw "you need start with `on` or `event` in r-animation";
+    }
+  }
+
+  if(destroies.length){
+    return function(){
+      destroies.forEach(function(destroy){
+        destroy();
+      })
+    }
+  }
+}
+
+
+Regular.directive( "r-animation", processAnimate)
+
+
+});
 require.register("regularjs/src/directive/event.js", function(exports, require, module){
 /**
  * event directive  bundle
- * 
+ *
  */
 var _ = require("../util.js");
 var dom = require("../dom.js");
 var Regular = require("../Regular.js");
 
-Regular._events = {
-  enter: function(elem, fire){
-    function update(ev){
-      if(ev.which == 13){
-        ev.preventDefault();
-        fire(ev);
-      }
-    }
-    dom.on(elem, "keypress", update);
-    return function(){
-      dom.off(elem, "keypress", update);
+Regular._addProtoInheritCache("event");
+
+Regular.event("enter", function(elem, fire) {
+  _.log("on-enter will be removed in 0.4.0", "error");
+  function update( ev ) {
+    if ( ev.which === 13 ) {
+      ev.preventDefault();
+      fire(ev);
     }
   }
-}
+  dom.on( elem, "keypress", update );
 
-Regular.event = function(name, handler){
-  if(!handler) return this._events[name];
-  this._events[name] = handler;
-  return this;
-}
+  return function() {
+    dom.off( elem, "keypress", update );
+  }
+})
 
 
-Regular.directive(/^on-\w+$/, function(elem, value, name){
-
-  var Component = this.constructor;
-
-  if(!name || !value) return;
+Regular.directive( /^on-\w+$/, function( elem, value, name , attrs) {
+  if ( !name || !value ) return;
   var type = name.split("-")[1];
-  var parsed = Regular.expression(value);
-  var self = this;
+  return this._handleEvent( elem, type, value, attrs );
+});
+// TODO.
+/**
+- $('dx').delegate()
+*/
+Regular.directive( /^delegate-\w+$/, function( elem, value, name, attrs ) {
+  var root = this.$root;
+  var _delegates = root._delegates || ( root._delegates = {} );
+  if ( !name || !value ) return;
+  var type = name.split("-")[1];
+  var fire = _.handleEvent.call(this, value, type);
 
-  function fire(obj){
-    self.data.$event = obj;
-    var res = parsed.get(self);
-    if(res === false && obj && obj.preventDefault) obj.preventDefault();
-    delete self.data.$event;
-    self.$update();
+  function delegateEvent(ev){
+    matchParent(ev, _delegates[type]);
   }
-  
-  var handler = Component.event(type);
-  if(handler){
-    var destroy = handler(elem, fire);
-  }else{
-    dom.on( elem, type, fire );
+
+  if( !_delegates[type] ){
+    _delegates[type] = [];
+
+    root.$on( "$inject", function( newParent ){
+      var preParent = this.parentNode;
+      if( preParent ){
+        dom.off(preParent, type, delegateEvent);
+      }
+      dom.on(newParent, type, delegateEvent);
+    })
+
+    root.$on("$destroy", function(){
+      if(root.parentNode) dom.off(root.parentNode, type, delegateEvent)
+      root._delegates[type] = null;
+    })
   }
-  return  handler? destroy : function(){
-    dom.off(elem, type, fire);
+  var delegate = {
+    element: elem,
+    fire: fire
   }
+  _delegates[type].push( delegate );
+
+  return function(){
+    var delegates = _delegates[type];
+    if(!delegates || !delegates.length) return;
+    for( var i = 0, len = delegates.length; i < len; i++ ){
+      if( delegates[i] === delegate ) delegates.splice(i, 1);
+    }
+  }
+
 });
 
 
+function matchParent(ev , delegates){
+  var target = ev.target;
+  while(target && target !== dom.doc){
+    for( var i = 0, len = delegates.length; i < len; i++ ){
+      if(delegates[i].element === target){
+        delegates[i].fire(ev);
+      }
+    }
+    target = target.parentNode;
+  }
+}
 });
 require.register("regularjs/src/module/timeout.js", function(exports, require, module){
 var Regular = require("../Regular.js");
@@ -3544,6 +4979,7 @@ function TimeoutModule(Component){
 
 
 Regular.plugin('timeout', TimeoutModule);
+Regular.plugin('$timeout', TimeoutModule);
 });
 require.alias("regularjs/src/index.js", "regularjs/index.js");
 if (typeof exports == 'object') {
