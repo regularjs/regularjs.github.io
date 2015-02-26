@@ -76,6 +76,7 @@ Beside ES5 Expression, regularjs also support some useful Expression type. I wil
 }
 
 
+<a id="bind-once"></a>
 
 ###{Bindonce Expression%一次性绑定}
 
@@ -188,10 +189,10 @@ with data `{list: ['Add','Update','Delete']}`, output:
 
 {
 
-__regularjs is also support advanced usage , like two-way filter,see [Component.filter](?api-en#filter) for Detail__
+__regularjs is also support advanced usage , like two-way filter,see [Component.filter](https://regularjs.github.io/guide/zh/basic/filter.html) for Detail__
 %
 
-__regularjs 同时支持一些高阶用法，例如双向过滤器。查看 [Component.filter](?api-zh#filter) 了解更多__
+__regularjs 同时支持一些高阶用法，例如双向过滤器。查看 [[Guide/filter](https://regularjs.github.io/guide/zh/basic/filter.html) 了解更多__
 }
 
 
@@ -273,6 +274,7 @@ but this.methodNoFound(...)` still throw  "Uncaught TypeError: undefined is not 
 
 
 
+<a id="interpolation"></a>
 ##{Interpolation%插值}
 
 {
@@ -573,6 +575,7 @@ __correct__
 
 
 
+<a id="list"></a>
 ##list
 
 {
@@ -637,6 +640,7 @@ __resulting html__
 <span class="index">3:d</span>
 ```
 
+<a id="if"></a>
 ##if/else/elseif
 
 {

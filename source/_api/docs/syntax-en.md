@@ -59,6 +59,7 @@ Beside ES5 Expression, regularjs also support some useful Expression type. I wil
 
 
 
+<a id="bind-once"></a>
 
 ###Bindonce Expression
 
@@ -161,7 +162,7 @@ with data `{list: ['Add','Update','Delete']}`, output:
 
 
 
-__regularjs is also support advanced usage , like two-way filter,see [Component.filter](?api-en#filter) for Detail__
+__regularjs is also support advanced usage , like two-way filter,see [Component.filter](https://regularjs.github.io/guide/zh/basic/filter.html) for Detail__
 
 
 
@@ -232,6 +233,7 @@ but this.methodNoFound(...)` still throw  "Uncaught TypeError: undefined is not 
 
 
 
+<a id="interpolation"></a>
 ##Interpolation
 
 
@@ -478,6 +480,7 @@ __correct__
 
 
 
+<a id="list"></a>
 ##list
 
 
@@ -534,6 +537,7 @@ __resulting html__
 <span class="index">3:d</span>
 ```
 
+<a id="if"></a>
 ##if/else/elseif
 
 

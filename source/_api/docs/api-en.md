@@ -571,6 +571,152 @@ __Usage__
 <!-- t -->
 
 
+
+
+<a href="##" name="animation"></a>
+###Component.animation
+
+
+register a new animation command, it is completely designed for directive `r-animation`. 
+
+
+
+See [Guide: animation](http://regularjs.github.io/guide/en/animation/README.html) for detail
+
+
+
+__Usage__
+
+Component.animation(name, factory)
+
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|name|String|the custom animation name|
+|factory|Function| Factory function for creating command|
+
+__Example__
+
+
+<a href="##" name="component"></a>
+###Component.component
+
+
+resiter a Component, make it nestable in OtherComponent.
+
+
+__Usage__
+
+`Component.component(name, factory)`
+
+
+__Arguments__
+
+|Param|Type|Detail|
+|--|--|--|
+|name|String|the name used to insert Component in template|
+|factory| Component | A Component to be register |
+
+
+__Example >__
+
+```js
+
+var Pager = Regular.extend({
+  // other options
+})
+
+Component.component('pager', Pager)
+
+// you can use pager as nested component
+Component2 = Component.extend({
+  template: "<pager></pager>"
+})
+
+```
+
+
+
+
+
+
+
+
+###Component.use
+
+__Usage__
+
+`Component.use(factory)`
+
+
+All methods introduced above(animation, directive,filter, event, implement) will have tightly dependence with particular Component, __but for reusing, a plugin must be Compnent-independent, the connection should be created during the using of plugin__.
+
+so, the general plugin will be written like this:
+
+
+
+
+```javascript
+
+function FooPlugin(Componenet){
+  Component.implement()// implement method
+    .filter()          // define filter
+    .directive()       // define directive
+    .event()           // define custom event
+}
+
+var YourComponent = Regular.extend();
+
+FooPlugin(YourComponent);   // lazy bind
+FooPlugin(Regular);         // lazy bind to globals
+
+```
+
+
+For consistency, every Component have a method named `use` to active a plugin. you can use the `FooPlugin` like this.
+
+
+
+
+```javascript
+
+YourComponent.use(FooPlugin);
+
+// global
+Regular.use(FooPlugin);
+
+```
+
+
+
+###Regular.config
+
+配置一些全局属性, 目前主要可以用来配置模板的自定义开关符号
+
+__Usage__ 
+
+`Regular.config( settings )`
+
+
+
+__Arguments__
+
+
+|Param|Type|Detail|
+|--|--|--|
+|settings.BEGIN|String| OPEN_TAG (default: '{')|
+|settings.END|String| END_TAG (default: '}') |
+
+
+__Example >__
+
+<!-- t -->
+
+change the TAG from default `{}` to `{{}}`
+
+
 ```javascript
 
 Regular.config({
@@ -629,25 +775,6 @@ Regular.parse("<h2>{{page.title + page.desc}}</h2>", {
 
 ```
 
-
-###Regular.expression
-
-Creating a Expression, almost an internal methods.
-
-
-
-__Usage__
-
-`Regular.expression( expressionString )`
-
-```javascript
-
-```
-
-
-__Return__
-
-Expression
 
 
 
@@ -770,7 +897,7 @@ you can call `$inject` many times to move component from one place to another.
 
 
 
-
+<a id="watch"></a>
 ###component.$watch
 
 
@@ -1265,25 +1392,26 @@ directive only works for element, you can't use directive to nested component.
 
 ###on-[eventName]
 
-{
 
-}
+you can use `on-**` to bind event on element or component
+
 
 __Syntax__
 
 `on-click={expression}` or `on-click=delegateName`
 
-@TODO.
 __Arguments__
 
 
 |Param|Type|Detail|
 |--|--|--|
-|expression| Expression |whether to disable this component(you can active it later use $mute(false))|
+|expression| Expression or Name | if particular event is triggerd, expression will be evaluated |
 
 
 
-During the compile phase, once regularjs's saw `on-*` in template, regularjs handle it as follow
+Event is very important in regularjs, reference is not enough to take it into detail see [Guide:event](http://regularjs.github.io/guide/en/events/README.html) for more information.
+
+
 
 
 ###r-model

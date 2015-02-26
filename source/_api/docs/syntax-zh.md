@@ -49,6 +49,7 @@ rgl模板几乎完整的按ES5的规范实现了表达式, 你可以几乎按以
 
 
 
+<a id="bind-once"></a>
 
 ###一次性绑定
 
@@ -148,7 +149,7 @@ with data `{list: ['Add','Update','Delete']}`, output:
 
 
 
-__regularjs 同时支持一些高阶用法，例如双向过滤器。查看 [Component.filter](?api-zh#filter) 了解更多__
+__regularjs 同时支持一些高阶用法，例如双向过滤器。查看 [[Guide/filter](https://regularjs.github.io/guide/zh/basic/filter.html) 了解更多__
 
 
 
@@ -217,6 +218,7 @@ new Component({
 
 
 
+<a id="interpolation"></a>
 ##插值
 
 
@@ -464,6 +466,7 @@ __correct__
 
 
 
+<a id="list"></a>
 ##list
 
 
@@ -521,6 +524,7 @@ __resulting html__
 <span class="index">3:d</span>
 ```
 
+<a id="if"></a>
 ##if/else/elseif
 
 

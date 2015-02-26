@@ -591,6 +591,7 @@ __Argument__
 |--|--|--|
 |name|String|the custom event name|
 |factory|Function| Factory function for creating event type|
+<!-- /t -->
 
 
 
@@ -601,12 +602,24 @@ __Argument__
 自定义一个动画command. animation接口完全是为`r-animation`指令服务的.
 
 
+
+查看 [指南: animation](http://regularjs.github.io/guide/zh/animation/README.html) 了解更多
+
+
+
 __Usage__
 
 Component.animation(name, factory)
 
 
+__Arguments__
 
+|Param|Type|Detail|
+|--|--|--|
+|name|String|the custom animation name|
+|factory|Function| Factory function for creating command|
+
+__Example__
 
 
 <a href="##" name="component"></a>
@@ -796,25 +809,6 @@ Regular.parse("<h2>{{page.title + page.desc}}</h2>", {
 ```
 
 
-###Regular.expression
-
-创建一个表达式，基本上你不会使用此方法
-
-
-
-__Usage__
-
-`Regular.expression( expressionString )`
-
-```javascript
-
-```
-
-
-__Return__
-
-Expression
-
 
 
 <a id="instance"></a>
@@ -936,7 +930,7 @@ __Tips__
 
 
 
-
+<a id="watch"></a>
 ###component.$watch
 
 
@@ -1439,25 +1433,26 @@ Regularjs 提供了一些常用的内置指令
 
 ###on-[eventName]
 
-{
 
-}
+你可以通过`on-**`在模板中绑定元素事件或组件事件
+
 
 __Syntax__
 
 `on-click={expression}` or `on-click=delegateName`
 
-@TODO.
 __Arguments__
 
 
 |Param|Type|Detail|
 |--|--|--|
-|expression| Expression |是否disable这个组件(可以后续重启它)|
+|expression| Expression or Name |  每当特定事件触发， 该表达式会被运行, 如果传入的不是表达式， 则该事件被代理到指定的组件事件上|
 
 
 
-During the compile phase, once regularjs's saw `on-*` in template, regularjs handle it as follow
+由于事件系统的重要性， API手册无法完整的描述整个事件系统， 请移步指南[Guide:event](http://regularjs.github.io/guide/zh/events/README.html)
+
+
 
 
 ###r-model

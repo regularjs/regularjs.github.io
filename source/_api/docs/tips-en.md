@@ -1,13 +1,12 @@
-[Improve this page >](https://github.com/regularjs/blog/edit/master/source/_api/_docs/api.md)
 
-
- Tips
 
 
 This page serves some content that not included by [api](?api-en) and [syntax](?syntax-en), but they all important.
 
 
-# Manage regularjs's template easily
+[Improve this page >](https://github.com/regularjs/blog/edit/master/source/_api/_docs/api.md)
+
+# Manage template easily
 
 
 在文档的所有例子中，为了方便起见, 都是使用了以下两种方式来管理模板
@@ -20,19 +19,21 @@ This page serves some content that not included by [api](?api-en) and [syntax](?
   })
   ```
 
-  当模板非常简单时，这样做确实非常方便，但当模板结构稍微复杂点时, 也可以使用页面的模板容器节点
+  当模板非常简单时，这样做确实非常方便，但当模板结构稍微复杂点时, 一般也可以使用页面的模板容器节点
 2. 引用实现写在页面标签中的内容，如 
 
   ```javascript
   var Component = Regular.extend({
-    tempalte: document.querySelector("app")
+    tempalte: document.getElementById("app")
   })
 
   ```
 
-  Where in element `app`:
+  Where in element `#app`:
 
   ```html
+
+  <script id='app' type='text/rgl'>
   <nav class="navbar navbar-inverse navbar-fixed-top">
     <div class="container-fluid">
       <div class="navbar-header">
@@ -47,13 +48,14 @@ This page serves some content that not included by [api](?api-en) and [syntax](?
       </div>
     </div>
   </div>
+  </script>
   ```
   这种方式相较于方式1其实有利有弊. 例在于它解决了在js中拼接字符串模板的肮脏行为, 弊则在于模板本身变成了一个“全局”的东西，组件这个统一的整体也被打碎了, 从项目规模庞大后，维护这些散落在页面中的容器节点也会成为随时引爆的导火索
 
 
-除此之外，上述两种解决方案都有一个问题：无法对模板做预解析. 
+除此之外，上述两种解决方案都有一个问题： __无法对模板做预解析. __
 
-“是否有解决上述问题的方案呢？” 答案是肯定的. regularjs 提供了市面上最常用的两种开发方式的解决方案: requirejs(AMD) 和 browserify(Commonjs), 
+“是否有解决上述问题的方案呢？” 答案是肯定的, 就是将模板加载集成到模块系统中， regularjs 提供了市面上最常用的两种开发方式的解决方案: requirejs(AMD) 和 browserify(Commonjs), 
 
 
 ## 1 [requirejs-regular](https://github.com/regularjs/requrejs-regular)
@@ -64,64 +66,40 @@ __Install__
 - `npm install requirejs-regular`
 
 
-__Usage__
+__Introdocution__
 
-使用`rgl!`前缀来标明此资源为regularjs模板
+
+use prefix `rgl!` to load regularjs template.
+
+
 
 
 __Example__
 
 ```js
 
-require.config({
-    paths : {
-        "rgl": '../../rgl',
-        "regularjs": '../../bower_components/regularjs/dist/regular'
-    },
-    rgl: {
-      BEGIN: '{{',
-      END: '}}'
-    }
-
-});
-
-
-require(['rgl!foo.html', 'rgl!foo.html', 'regularjs'], function(foo, haha , Regular){
-
-  Regular.config({
-    END: '}}',
-    BEGIN: '{{'
-  })
+require(['rgl!foo.html', 'regularjs'], function(foo, haha , Regular){
 
     var Foo = Regular.extend({
       template: foo
     })
-    var Haha = Regular.extend({
-      template: haha
-    })
 
-
-    new Foo({ 
-      data: {
-        message: "rgl init Component "
-      }
-    }).$inject("app")
-
-    new Haha({
-      data: {
-        message: "text init Component "
-      }
-    }).$inject("app")
-
+    return Foo;
 
 });
 ```
 
 
-__Preparse__
+See [https://github.com/regularjs/requirejs-regular](https://github.com/regularjs/requirejs-regular) for more information about require-regular and settings.
 
 
-## 2 browserify
+
+
+## 2 regularify (browserify)
+
+
+we provide a browserify transform named [regularify](https://github.com/regularjs/regularify) for converting template to AST. 
+
 
 __Install__
 
@@ -130,26 +108,68 @@ __Install__
 
 __Usage__
 
-
-__Example__
-
-
-__Preparse__
+You can simply use extensions `.rgl` and `.rglc`(they do different transform) to load regularjs template or component, the extensions are also configurable
 
 
 
-_除此之外，对于网易的开发者而言，在NEJ打包工具中已经直接集成了regularjs的模板预解析，有兴趣可以直接在内部询问_
+__use `.rgl`__
 
+transform rgl is used to load rgl template
+
+```html
+var ast = require("xx.")
+
+var Component = Regular.extend({
+  template: ast,
+  // ....
+})
+
+```
+
+
+__use `.rglc`__
+
+transform rglc is used to load A reuglarjs Component.
+
+```html
+var Component = require("component.rglc")
+```
+
+where in `component.rglc`
+
+```html
+<h2>{title}</h2>
+<div>{content}</div>
+
+<script>
+  module.exports = {
+    init: function(){
+
+    }
+  }
+</script>
+
+```
+
+See [regularify] for more information
 
 
 
 ## 3. "You don't use browserify or requirejs?" 
 
 
+There is so many module system in the world, we can't support all of them by ourself. But you can use [`Regular.parse`](?api-en#parse) to implement An plugin for you self.
 
 
 
 
+
+
+
+```html
+var k = functin()[] 
+
+```
 
 
 
@@ -927,5 +947,6 @@ the thing you only need to do is that: when your animation is compelete, call th
 - Directive in regularjs is used to enhance element's ability, it just like a decorator on dom element. 
 - Component doesn't have any relationship with dom element. It is a small mvvm system, it have data, template and mini controller, you can use Component to realize complex function. and they are combinative.
 - All of them are reusable in your application.
+
 
 
