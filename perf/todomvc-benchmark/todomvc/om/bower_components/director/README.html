@@ -1,0 +1,695 @@
+<p><img src="https://github.com/flatiron/director/raw/master/img/director.png" /></p>
+<h1 id="Synopsis">Synopsis</h1>
+<p>Director is a router. Routing is the process of determining what code to run when a URL is requested.</p>
+<h1 id="Motivation">Motivation</h1>
+<p>A routing library that works in both the browser and node.js environments with as few differences as possible. Simplifies the development of Single Page Apps and Node.js applications. Dependency free (doesn’t require jQuery or Express, etc).</p>
+<h1 id="Status">Status</h1>
+<p><a href="http://travis-ci.org/flatiron/director"><img src="https://secure.travis-ci.org/flatiron/director.png?branch=master" alt="Build Status"></a></p>
+<h1 id="Features">Features</h1>
+<ul>
+<li><a href="#client-side">Client-Side Routing</a></li>
+<li><a href="#http-routing">Server-Side HTTP Routing</a></li>
+<li><a href="#cli-routing">Server-Side CLI Routing</a></li>
+</ul>
+<h1 id="Usage">Usage</h1>
+<ul>
+<li><a href="#api-documentation">API Documentation</a></li>
+<li><a href="#faq">Frequently Asked Questions</a></li>
+</ul>
+<p><a name="client-side"></a></p>
+<h2 id="Client-side_Routing">Client-side Routing</h2>
+<p>It simply watches the hash of the URL to determine what to do, for example:</p>
+<pre><code><span class="symbol">http:</span>/<span class="regexp">/foo.com/</span><span class="comment">#/bar</span>
+</code></pre><p>Client-side routing (aka hash-routing) allows you to specify some information about the state of the application using the URL. So that when the user visits a specific URL, the application can be transformed accordingly.</p>
+<p><img src="https://github.com/flatiron/director/raw/master/img/hashRoute.png" /></p>
+<p>Here is a simple example:</p>
+<pre><code class="html"><span class="doctype">&lt;!DOCTYPE html&gt;</span>
+<span class="tag">&lt;<span class="title">html</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">head</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">meta</span> <span class="attribute">charset</span>=<span class="value">"utf-8"</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">title</span>&gt;</span>A Gentle Introduction<span class="tag">&lt;/<span class="title">title</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"https://raw.github.com/flatiron/director/master/build/director.min.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">script</span>&gt;</span><span class="javascript">
+
+      <span class="keyword">var</span> author = <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{ <span class="built_in">console</span>.log(<span class="string">"author"</span>); },
+          books = <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{ <span class="built_in">console</span>.log(<span class="string">"books"</span>); },
+          viewBook = <span class="function"><span class="keyword">function</span><span class="params">(bookId)</span> </span>{ <span class="built_in">console</span>.log(<span class="string">"viewBook: bookId is populated: "</span> + bookId); };
+
+      <span class="keyword">var</span> routes = {
+        <span class="string">'/author'</span>: author,
+        <span class="string">'/books'</span>: [books, <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{ <span class="built_in">console</span>.log(<span class="string">"An inline route handler."</span>); }],
+        <span class="string">'/books/view/:bookId'</span>: viewBook
+      };
+
+      <span class="keyword">var</span> router = Router(routes);
+      router.init();
+
+    </span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">head</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">body</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">ul</span>&gt;</span>
+      <span class="tag">&lt;<span class="title">li</span>&gt;</span><span class="tag">&lt;<span class="title">a</span> <span class="attribute">href</span>=<span class="value">"#/author"</span>&gt;</span>#/author<span class="tag">&lt;/<span class="title">a</span>&gt;</span><span class="tag">&lt;/<span class="title">li</span>&gt;</span>
+      <span class="tag">&lt;<span class="title">li</span>&gt;</span><span class="tag">&lt;<span class="title">a</span> <span class="attribute">href</span>=<span class="value">"#/books"</span>&gt;</span>#/books<span class="tag">&lt;/<span class="title">a</span>&gt;</span><span class="tag">&lt;/<span class="title">li</span>&gt;</span>
+      <span class="tag">&lt;<span class="title">li</span>&gt;</span><span class="tag">&lt;<span class="title">a</span> <span class="attribute">href</span>=<span class="value">"#/books/view/1"</span>&gt;</span>#/books/view/1<span class="tag">&lt;/<span class="title">a</span>&gt;</span><span class="tag">&lt;/<span class="title">li</span>&gt;</span>
+    <span class="tag">&lt;/<span class="title">ul</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">body</span>&gt;</span>
+<span class="tag">&lt;/<span class="title">html</span>&gt;</span>
+</code></pre>
+<p>Director works great with your favorite DOM library, such as jQuery.</p>
+<pre><code class="html"><span class="doctype">&lt;!DOCTYPE html&gt;</span>
+<span class="tag">&lt;<span class="title">html</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">head</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">meta</span> <span class="attribute">charset</span>=<span class="value">"utf-8"</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">title</span>&gt;</span>A Gentle Introduction 2<span class="tag">&lt;/<span class="title">title</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"https://raw.github.com/flatiron/director/master/build/director.min.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">script</span>&gt;</span><span class="javascript">
+    $(<span class="string">'document'</span>).ready(<span class="function"><span class="keyword">function</span><span class="params">()</span></span>{
+      <span class="comment">//</span>
+      <span class="comment">// create some functions to be executed when</span>
+      <span class="comment">// the correct route is issued by the user.</span>
+      <span class="comment">//</span>
+      <span class="keyword">var</span> showAuthorInfo = <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{ <span class="built_in">console</span>.log(<span class="string">"showAuthorInfo"</span>); },
+          listBooks = <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{ <span class="built_in">console</span>.log(<span class="string">"listBooks"</span>); },
+          allroutes = <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+            <span class="keyword">var</span> route = <span class="built_in">window</span>.location.hash.slice(<span class="number">2</span>),
+                sections = $(<span class="string">'section'</span>),
+                section;
+            <span class="keyword">if</span> ((section = sections.filter(<span class="string">'[data-route='</span> + route + <span class="string">']'</span>)).length) {
+              sections.hide(<span class="number">250</span>);
+              section.show(<span class="number">250</span>);
+            }
+          };
+
+      <span class="comment">//</span>
+      <span class="comment">// define the routing table.</span>
+      <span class="comment">//</span>
+      <span class="keyword">var</span> routes = {
+        <span class="string">'/author'</span>: showAuthorInfo,
+        <span class="string">'/books'</span>: listBooks
+      };
+
+      <span class="comment">//</span>
+      <span class="comment">// instantiate the router.</span>
+      <span class="comment">//</span>
+      <span class="keyword">var</span> router = Router(routes);
+
+      <span class="comment">//</span>
+      <span class="comment">// a global configuration setting.</span>
+      <span class="comment">//</span>
+      router.configure({
+        on: allroutes
+      });
+      router.init();
+    });
+    </span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">head</span>&gt;</span>
+  <span class="tag">&lt;<span class="title">body</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">section</span> <span class="attribute">data-route</span>=<span class="value">"author"</span>&gt;</span>Author Name<span class="tag">&lt;/<span class="title">section</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">section</span> <span class="attribute">data-route</span>=<span class="value">"books"</span>&gt;</span>Book1, Book2, Book3<span class="tag">&lt;/<span class="title">section</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">ul</span>&gt;</span>
+      <span class="tag">&lt;<span class="title">li</span>&gt;</span><span class="tag">&lt;<span class="title">a</span> <span class="attribute">href</span>=<span class="value">"#/author"</span>&gt;</span>#/author<span class="tag">&lt;/<span class="title">a</span>&gt;</span><span class="tag">&lt;/<span class="title">li</span>&gt;</span>
+      <span class="tag">&lt;<span class="title">li</span>&gt;</span><span class="tag">&lt;<span class="title">a</span> <span class="attribute">href</span>=<span class="value">"#/books"</span>&gt;</span>#/books<span class="tag">&lt;/<span class="title">a</span>&gt;</span><span class="tag">&lt;/<span class="title">li</span>&gt;</span>
+    <span class="tag">&lt;/<span class="title">ul</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">body</span>&gt;</span>
+<span class="tag">&lt;/<span class="title">html</span>&gt;</span>
+</code></pre>
+<p>You can find a browser-specific build of <code>director</code> <a href="https://github.com/flatiron/director/blob/master/build/director.min.js">here</a> which has all of the server code stripped away.</p>
+<p><a name="http-routing"></a></p>
+<h2 id="Server-Side_HTTP_Routing">Server-Side HTTP Routing</h2>
+<p>Director handles routing for HTTP requests similar to <code>journey</code> or <code>express</code>:</p>
+<pre><code class="js">  <span class="comment">//</span>
+  <span class="comment">// require the native http module, as well as director.</span>
+  <span class="comment">//</span>
+  <span class="keyword">var</span> http = <span class="built_in">require</span>(<span class="string">'http'</span>),
+      director = <span class="built_in">require</span>(<span class="string">'director'</span>);
+
+  <span class="comment">//</span>
+  <span class="comment">// create some logic to be routed to.</span>
+  <span class="comment">//</span>
+  <span class="function"><span class="keyword">function</span> <span class="title">helloWorld</span><span class="params">()</span> </span>{
+    <span class="keyword">this</span>.res.writeHead(<span class="number">200</span>, { <span class="string">'Content-Type'</span>: <span class="string">'text/plain'</span> })
+    <span class="keyword">this</span>.res.end(<span class="string">'hello world'</span>);
+  }
+
+  <span class="comment">//</span>
+  <span class="comment">// define a routing table.</span>
+  <span class="comment">//</span>
+  <span class="keyword">var</span> router = <span class="keyword">new</span> director.http.Router({
+    <span class="string">'/hello'</span>: {
+      get: helloWorld
+    }
+  });
+
+  <span class="comment">//</span>
+  <span class="comment">// setup a server and when there is a request, dispatch the</span>
+  <span class="comment">// route that was requested in the request object.</span>
+  <span class="comment">//</span>
+  <span class="keyword">var</span> server = http.createServer(<span class="function"><span class="keyword">function</span> <span class="params">(req, res)</span> </span>{
+    router.dispatch(req, res, <span class="function"><span class="keyword">function</span> <span class="params">(err)</span> </span>{
+      <span class="keyword">if</span> (err) {
+        res.writeHead(<span class="number">404</span>);
+        res.end();
+      }
+    });
+  });
+
+  <span class="comment">//</span>
+  <span class="comment">// You can also do ad-hoc routing, similar to `journey` or `express`.</span>
+  <span class="comment">// This can be done with a string or a regexp.</span>
+  <span class="comment">//</span>
+  router.get(<span class="string">'/bonjour'</span>, helloWorld);
+  router.get(<span class="regexp">/hola/</span>, helloWorld);
+
+  <span class="comment">//</span>
+  <span class="comment">// set the server to listen on port `8080`.</span>
+  <span class="comment">//</span>
+  server.listen(<span class="number">8080</span>);
+</code></pre>
+<h3 id="See_Also:">See Also:</h3>
+<ul>
+<li>Auto-generated Node.js API Clients for routers using <a href="http://github.com/flatiron/director-reflector">Director-Reflector</a></li>
+<li>RESTful Resource routing using <a href="http://github.com/flatiron/restful">restful</a></li>
+<li>HTML / Plain Text views of routers using <a href="http://github.com/flatiron/director-explorer">Director-Explorer</a></li>
+</ul>
+<p><a name="cli-routing"></a></p>
+<h2 id="CLI_Routing">CLI Routing</h2>
+<p>Director supports Command Line Interface routing. Routes for cli options are based on command line input (i.e. <code>process.argv</code>) instead of a URL.</p>
+<pre><code class="js">  <span class="keyword">var</span> director = <span class="built_in">require</span>(<span class="string">'director'</span>);
+
+  <span class="keyword">var</span> router = <span class="keyword">new</span> director.cli.Router();
+
+  router.on(<span class="string">'create'</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{
+    <span class="built_in">console</span>.log(<span class="string">'create something'</span>);
+  });
+
+  router.on(<span class="regexp">/destroy/</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{
+    <span class="built_in">console</span>.log(<span class="string">'destroy something'</span>);
+  });
+
+  <span class="comment">// You will need to dispatch the cli arguments yourself</span>
+  router.dispatch(<span class="string">'on'</span>, process.argv.slice(<span class="number">2</span>).join(<span class="string">' '</span>));
+</code></pre>
+<p>Using the cli router, you can dispatch commands by passing them as a string. For example, if this example is in a file called <code>foo.js</code>:</p>
+<pre><code class="bash">$ node foo.js create
+create something
+$ node foo.js destroy
+destroy something
+</code></pre>
+<p><a name="api-documentation"></a></p>
+<h1 id="API_Documentation">API Documentation</h1>
+<ul>
+<li><a href="#constructor">Constructor</a></li>
+<li><a href="#routing-table">Routing Table</a></li>
+<li><a href="#adhoc-routing">Adhoc Routing</a></li>
+<li><a href="#scoped-routing">Scoped Routing</a></li>
+<li><a href="#routing-events">Routing Events</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#url-matching">URL Matching</a></li>
+<li><a href="#url-params">URL Params</a></li>
+<li><a href="#route-recursion">Route Recursion</a></li>
+<li><a href="#async-routing">Async Routing</a></li>
+<li><a href="#resources">Resources</a></li>
+<li><a href="#history-api">History API</a></li>
+<li><a href="#instance-methods">Instance Methods</a></li>
+<li><a href="#attach-to-this">Attach Properties to <code>this</code></a></li>
+<li><a href="#http-streaming-body-parsing">HTTP Streaming and Body Parsing</a></li>
+</ul>
+<p><a name="constructor"></a></p>
+<h2 id="Constructor">Constructor</h2>
+<pre><code class="js">  <span class="keyword">var</span> router = Router(routes);
+</code></pre>
+<p><a name="routing-table"></a></p>
+<h2 id="Routing_Table">Routing Table</h2>
+<p>An object literal that contains nested route definitions. A potentially nested set of key/value pairs. The keys in the object literal represent each potential part of the URL. The values in the object literal contain references to the functions that should be associated with them. <em>bark</em> and <em>meow</em> are two functions that you have defined in your code.</p>
+<pre><code class="js">  <span class="comment">//</span>
+  <span class="comment">// Assign routes to an object literal.</span>
+  <span class="comment">//</span>
+  <span class="keyword">var</span> routes = {
+    <span class="comment">//</span>
+    <span class="comment">// a route which assigns the function `bark`.</span>
+    <span class="comment">//</span>
+    <span class="string">'/dog'</span>: bark,
+    <span class="comment">//</span>
+    <span class="comment">// a route which assigns the functions `meow` and `scratch`.</span>
+    <span class="comment">//</span>
+    <span class="string">'/cat'</span>: [meow, scratch]
+  };
+
+  <span class="comment">//</span>
+  <span class="comment">// Instantiate the router.</span>
+  <span class="comment">//</span>
+  <span class="keyword">var</span> router = Router(routes);
+</code></pre>
+<p><a name="adhoc-routing"></a></p>
+<h2 id="Adhoc_Routing">Adhoc Routing</h2>
+<p>When developing large client-side or server-side applications it is not always possible to define routes in one location. Usually individual decoupled components register their own routes with the application router. We refer to this as <em>Adhoc Routing.</em> Lets take a look at the API <code>director</code> exposes for adhoc routing:</p>
+<p><strong>Client-side Routing</strong></p>
+<pre><code class="js">  <span class="keyword">var</span> router = <span class="keyword">new</span> Router().init();
+
+  router.on(<span class="string">'/some/resource'</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{
+    <span class="comment">//</span>
+    <span class="comment">// Do something on `/#/some/resource`</span>
+    <span class="comment">//</span>
+  });
+</code></pre>
+<p><strong>HTTP Routing</strong></p>
+<pre><code class="js">  <span class="keyword">var</span> router = <span class="keyword">new</span> director.http.Router();
+
+  router.get(<span class="regexp">/\/some\/resource/</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{
+    <span class="comment">//</span>
+    <span class="comment">// Do something on an GET to `/some/resource`</span>
+    <span class="comment">//</span>
+  });
+</code></pre>
+<p><a name="scoped-routing"></a></p>
+<h2 id="Scoped_Routing">Scoped Routing</h2>
+<p>In large web appliations, both <a href="#client-side">Client-side</a> and <a href="#http-routing">Server-side</a>, routes are often scoped within a few individual resources. Director exposes a simple way to do this for <a href="#adhoc-routing">Adhoc Routing</a> scenarios:</p>
+<pre><code class="js">  <span class="keyword">var</span> router = <span class="keyword">new</span> director.http.Router();
+
+  <span class="comment">//</span>
+  <span class="comment">// Create routes inside the `/users` scope.</span>
+  <span class="comment">//</span>
+  router.path(<span class="regexp">/\/users\/(\w+)/</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{
+    <span class="comment">//</span>
+    <span class="comment">// The `this` context of the function passed to `.path()`</span>
+    <span class="comment">// is the Router itself.</span>
+    <span class="comment">//</span>
+
+    <span class="keyword">this</span>.post(<span class="function"><span class="keyword">function</span> <span class="params">(id)</span> </span>{
+      <span class="comment">//</span>
+      <span class="comment">// Create the user with the specified `id`.</span>
+      <span class="comment">//</span>
+    });
+
+    <span class="keyword">this</span>.get(<span class="function"><span class="keyword">function</span> <span class="params">(id)</span> </span>{
+      <span class="comment">//</span>
+      <span class="comment">// Retreive the user with the specified `id`.</span>
+      <span class="comment">//</span>
+    });
+
+    <span class="keyword">this</span>.get(<span class="regexp">/\/friends/</span>, <span class="function"><span class="keyword">function</span> <span class="params">(id)</span> </span>{
+      <span class="comment">//</span>
+      <span class="comment">// Get the friends for the user with the specified `id`.</span>
+      <span class="comment">//</span>
+    });
+  });
+</code></pre>
+<p><a name="routing-events"></a></p>
+<h2 id="Routing_Events">Routing Events</h2>
+<p>In <code>director</code>, a “routing event” is a named property in the <a href="#routing-table">Routing Table</a> which can be assigned to a function or an Array of functions to be called when a route is matched in a call to <code>router.dispatch()</code>.</p>
+<ul>
+<li><strong>on:</strong> A function or Array of functions to execute when the route is matched.</li>
+<li><strong>before:</strong> A function or Array of functions to execute before calling the <code>on</code> method(s).</li>
+</ul>
+<p><strong>Client-side only</strong></p>
+<ul>
+<li><strong>after:</strong> A function or Array of functions to execute when leaving a particular route.</li>
+<li><strong>once:</strong> A function or Array of functions to execute only once for a particular route.</li>
+</ul>
+<p><a name="configuration"></a></p>
+<h2 id="Configuration">Configuration</h2>
+<p>Given the flexible nature of <code>director</code> there are several options available for both the <a href="#client-side">Client-side</a> and <a href="#http-routing">Server-side</a>. These options can be set using the <code>.configure()</code> method:</p>
+<pre><code class="js">  <span class="keyword">var</span> router = <span class="keyword">new</span> director.Router(routes).configure(options);
+</code></pre>
+<p>The <code>options</code> are:</p>
+<ul>
+<li><strong>recurse:</strong> Controls <a href="#route-recursion">route recursion</a>. Use <code>forward</code>, <code>backward</code>, or <code>false</code>. Default is <code>false</code> Client-side, and <code>backward</code> Server-side.</li>
+<li><strong>strict:</strong> If set to <code>false</code>, then trailing slashes (or other delimiters) are allowed in routes. Default is <code>true</code>.</li>
+<li><strong>async:</strong> Controls <a href="#async-routing">async routing</a>. Use <code>true</code> or <code>false</code>. Default is <code>false</code>.</li>
+<li><strong>delimiter:</strong> Character separator between route fragments. Default is <code>/</code>.</li>
+<li><strong>notfound:</strong> A function to call if no route is found on a call to <code>router.dispatch()</code>.</li>
+<li><strong>on:</strong> A function (or list of functions) to call on every call to <code>router.dispatch()</code> when a route is found.</li>
+<li><strong>before:</strong> A function (or list of functions) to call before every call to <code>router.dispatch()</code> when a route is found.</li>
+</ul>
+<p><strong>Client-side only</strong></p>
+<ul>
+<li><strong>resource:</strong> An object to which string-based routes will be bound. This can be especially useful for late-binding to route functions (such as async client-side requires).</li>
+<li><strong>after:</strong> A function (or list of functions) to call when a given route is no longer the active route.</li>
+<li><strong>html5history:</strong> If set to <code>true</code> and client supports <code>pushState()</code>, then uses HTML5 History API instead of hash fragments. See <a href="#history-api">History API</a> for more information.</li>
+<li><strong>run_handler_in_init:</strong> If <code>html5history</code> is enabled, the route handler by default is executed upon <code>Router.init()</code> since with real URIs the router can not know if it should call a route handler or not. Setting this to <code>false</code> disables the route handler initial execution.</li>
+</ul>
+<p><a name="url-matching"></a></p>
+<h2 id="URL_Matching">URL Matching</h2>
+<pre><code class="js">  <span class="keyword">var</span> router = Router({
+    <span class="comment">//</span>
+    <span class="comment">// given the route '/dog/yella'.</span>
+    <span class="comment">//</span>
+    <span class="string">'/dog'</span>: {
+      <span class="string">'/:color'</span>: {
+        <span class="comment">//</span>
+        <span class="comment">// this function will return the value 'yella'.</span>
+        <span class="comment">//</span>
+        on: <span class="function"><span class="keyword">function</span> <span class="params">(color)</span> </span>{ <span class="built_in">console</span>.log(color) }
+      }
+    }
+  });
+</code></pre>
+<p>Routes can sometimes become very complex, <code>simple/:tokens</code> don’t always suffice. Director supports regular expressions inside the route names. The values captured from the regular expressions are passed to your listener function.</p>
+<pre><code class="js">  <span class="keyword">var</span> router = Router({
+    <span class="comment">//</span>
+    <span class="comment">// given the route '/hello/world'.</span>
+    <span class="comment">//</span>
+    <span class="string">'/hello'</span>: {
+      <span class="string">'/(\\w+)'</span>: {
+        <span class="comment">//</span>
+        <span class="comment">// this function will return the value 'world'.</span>
+        <span class="comment">//</span>
+        on: <span class="function"><span class="keyword">function</span> <span class="params">(who)</span> </span>{ <span class="built_in">console</span>.log(who) }
+      }
+    }
+  });
+</code></pre>
+<pre><code class="js">  <span class="keyword">var</span> router = Router({
+    <span class="comment">//</span>
+    <span class="comment">// given the route '/hello/world/johny/appleseed'.</span>
+    <span class="comment">//</span>
+    <span class="string">'/hello'</span>: {
+      <span class="string">'/world/?([^\/]*)\/([^\/]*)/?'</span>: <span class="function"><span class="keyword">function</span> <span class="params">(a, b)</span> </span>{
+        <span class="built_in">console</span>.log(a, b);
+      }
+    }
+  });
+</code></pre>
+<p><a name="url-params"></a></p>
+<h2 id="URL_Parameters">URL Parameters</h2>
+<p>When you are using the same route fragments it is more descriptive to define these fragments by name and then use them in your <a href="#routing-table">Routing Table</a> or <a href="#adhoc-routing">Adhoc Routes</a>. Consider a simple example where a <code>userId</code> is used repeatedly.</p>
+<pre><code class="js">  <span class="comment">//</span>
+  <span class="comment">// Create a router. This could also be director.cli.Router() or</span>
+  <span class="comment">// director.http.Router().</span>
+  <span class="comment">//</span>
+  <span class="keyword">var</span> router = <span class="keyword">new</span> director.Router();
+
+  <span class="comment">//</span>
+  <span class="comment">// A route could be defined using the `userId` explicitly.</span>
+  <span class="comment">//</span>
+  router.on(<span class="regexp">/([\w-_]+)/</span>, <span class="function"><span class="keyword">function</span> <span class="params">(userId)</span> </span>{ });
+
+  <span class="comment">//</span>
+  <span class="comment">// Define a shorthand for this fragment called `userId`.</span>
+  <span class="comment">//</span>
+  router.param(<span class="string">'userId'</span>, <span class="regexp">/([\\w\\-]+)/</span>);
+
+  <span class="comment">//</span>
+  <span class="comment">// Now multiple routes can be defined with the same</span>
+  <span class="comment">// regular expression.</span>
+  <span class="comment">//</span>
+  router.on(<span class="string">'/anything/:userId'</span>, <span class="function"><span class="keyword">function</span> <span class="params">(userId)</span> </span>{ });
+  router.on(<span class="string">'/something-else/:userId'</span>, <span class="function"><span class="keyword">function</span> <span class="params">(userId)</span> </span>{ });
+</code></pre>
+<p><a name="route-recursion"></a></p>
+<h2 id="Route_Recursion">Route Recursion</h2>
+<p>Can be assigned the value of <code>forward</code> or <code>backward</code>. The recurse option will determine the order in which to fire the listeners that are associated with your routes. If this option is NOT specified or set to null, then only the listeners associated with an exact match will be fired.</p>
+<h3 id="No_recursion,_with_the_URL_/dog/angry">No recursion, with the URL /dog/angry</h3>
+<pre><code class="js">  <span class="keyword">var</span> routes = {
+    <span class="string">'/dog'</span>: {
+      <span class="string">'/angry'</span>: {
+        <span class="comment">//</span>
+        <span class="comment">// Only this method will be fired.</span>
+        <span class="comment">//</span>
+        on: growl
+      },
+      on: bark
+    }
+  };
+
+  <span class="keyword">var</span> router = Router(routes);
+</code></pre>
+<h3 id="Recursion_set_to_backward,_with_the_URL_/dog/angry">Recursion set to <code>backward</code>, with the URL /dog/angry</h3>
+<pre><code class="js">  <span class="keyword">var</span> routes = {
+    <span class="string">'/dog'</span>: {
+      <span class="string">'/angry'</span>: {
+        <span class="comment">//</span>
+        <span class="comment">// This method will be fired first.</span>
+        <span class="comment">//</span>
+        on: growl
+      },
+      <span class="comment">//</span>
+      <span class="comment">// This method will be fired second.</span>
+      <span class="comment">//</span>
+      on: bark
+    }
+  };
+
+  <span class="keyword">var</span> router = Router(routes).configure({ recurse: <span class="string">'backward'</span> });
+</code></pre>
+<h3 id="Recursion_set_to_forward,_with_the_URL_/dog/angry">Recursion set to <code>forward</code>, with the URL /dog/angry</h3>
+<pre><code class="js">  <span class="keyword">var</span> routes = {
+    <span class="string">'/dog'</span>: {
+      <span class="string">'/angry'</span>: {
+        <span class="comment">//</span>
+        <span class="comment">// This method will be fired second.</span>
+        <span class="comment">//</span>
+        on: growl
+      },
+      <span class="comment">//</span>
+      <span class="comment">// This method will be fired first.</span>
+      <span class="comment">//</span>
+      on: bark
+    }
+  };
+
+  <span class="keyword">var</span> router = Router(routes).configure({ recurse: <span class="string">'forward'</span> });
+</code></pre>
+<h3 id="Breaking_out_of_recursion,_with_the_URL_/dog/angry">Breaking out of recursion, with the URL /dog/angry</h3>
+<pre><code class="js">  <span class="keyword">var</span> routes = {
+    <span class="string">'/dog'</span>: {
+      <span class="string">'/angry'</span>: {
+        <span class="comment">//</span>
+        <span class="comment">// This method will be fired first.</span>
+        <span class="comment">//</span>
+        on: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{ <span class="keyword">return</span> <span class="literal">false</span>; }
+      },
+      <span class="comment">//</span>
+      <span class="comment">// This method will not be fired.</span>
+      <span class="comment">//</span>
+      on: bark
+    }
+  };
+
+  <span class="comment">//</span>
+  <span class="comment">// This feature works in reverse with recursion set to true.</span>
+  <span class="comment">//</span>
+  <span class="keyword">var</span> router = Router(routes).configure({ recurse: <span class="string">'backward'</span> });
+</code></pre>
+<p><a name="async-routing"></a></p>
+<h2 id="Async_Routing">Async Routing</h2>
+<p>Before diving into how Director exposes async routing, you should understand <a href="#route-recursion">Route Recursion</a>. At it’s core route recursion is about evaluating a series of functions gathered when traversing the <a href="#routing-table">Routing Table</a>.</p>
+<p>Normally this series of functions is evaluated synchronously. In async routing, these functions are evaluated asynchronously. Async routing can be extremely useful both on the client-side and the server-side:</p>
+<ul>
+<li><strong>Client-side:</strong> To ensure an animation or other async operations (such as HTTP requests for authentication) have completed before continuing evaluation of a route.</li>
+<li><strong>Server-side:</strong> To ensure arbitrary async operations (such as performing authentication) have completed before continuing the evaluation of a route.</li>
+</ul>
+<p>The method signatures for route functions in synchronous and asynchronous evaluation are different: async route functions take an additional <code>next()</code> callback.</p>
+<h3 id="Synchronous_route_functions">Synchronous route functions</h3>
+<pre><code class="js">  <span class="keyword">var</span> router = <span class="keyword">new</span> director.Router();
+
+  router.on(<span class="string">'/:foo/:bar/:bazz'</span>, <span class="function"><span class="keyword">function</span> <span class="params">(foo, bar, bazz)</span> </span>{
+    <span class="comment">//</span>
+    <span class="comment">// Do something asynchronous with `foo`, `bar`, and `bazz`.</span>
+    <span class="comment">//</span>
+  });
+</code></pre>
+<h3 id="Asynchronous_route_functions">Asynchronous route functions</h3>
+<pre><code class="js">  <span class="keyword">var</span> router = <span class="keyword">new</span> director.http.Router().configure({ async: <span class="literal">true</span> });
+
+  router.on(<span class="string">'/:foo/:bar/:bazz'</span>, <span class="function"><span class="keyword">function</span> <span class="params">(foo, bar, bazz, next)</span> </span>{
+    <span class="comment">//</span>
+    <span class="comment">// Go do something async, and determine that routing should stop</span>
+    <span class="comment">//</span>
+    next(<span class="literal">false</span>);
+  });
+</code></pre>
+<p><a name="resources"></a></p>
+<h2 id="Resources">Resources</h2>
+<p><strong>Available on the Client-side only.</strong> An object literal containing functions. If a host object is specified, your route definitions can provide string literals that represent the function names inside the host object. A host object can provide the means for better encapsulation and design.</p>
+<pre><code class="js">
+  <span class="keyword">var</span> router = Router({
+
+    <span class="string">'/hello'</span>: {
+      <span class="string">'/usa'</span>: <span class="string">'americas'</span>,
+      <span class="string">'/china'</span>: <span class="string">'asia'</span>
+    }
+
+  }).configure({ resource: container }).init();
+
+  <span class="keyword">var</span> container = {
+    americas: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{ <span class="keyword">return</span> <span class="literal">true</span>; },
+    china: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{ <span class="keyword">return</span> <span class="literal">true</span>; }
+  };
+</code></pre>
+<p><a name="history-api"></a></p>
+<h2 id="History_API">History API</h2>
+<p><strong>Available on the Client-side only.</strong> Director supports using HTML5 History API instead of hash fragments for navigation. To use the API, pass <code>{html5history: true}</code> to <code>configure()</code>. Use of the API is enabled only if the client supports <code>pushState()</code>.</p>
+<p>Using the API gives you cleaner URIs but they come with a cost. Unlike with hash fragments your route URIs must exist. When the client enters a page, say <a href="http://foo.com/bar/baz">http://foo.com/bar/baz</a>, the web server must respond with something meaningful. Usually this means that your web server checks the URI points to something that, in a sense, exists, and then serves the client the JavaScript application.</p>
+<p>If you’re after a single-page application you can not use plain old <code>&lt;a href=&quot;/bar/baz&quot;&gt;</code> tags for navigation anymore. When such link is clicked, web browsers try to ask for the resource from server which is not of course desired for a single-page application. Instead you need to use e.g. click handlers and call the <code>setRoute()</code> method yourself.</p>
+<p><a name="attach-to-this"></a></p>
+<h2 id="Attach_Properties_To_this">Attach Properties To <code>this</code></h2>
+<p>Generally, the <code>this</code> object bound to route handlers, will contain the request in <code>this.req</code> and the response in <code>this.res</code>. One may attach additional properties to <code>this</code> with the <code>router.attach</code> method:</p>
+<pre><code class="js">  <span class="keyword">var</span> director = <span class="built_in">require</span>(<span class="string">'director'</span>);
+
+  <span class="keyword">var</span> router = <span class="keyword">new</span> director.http.Router().configure(options);
+
+  <span class="comment">//</span>
+  <span class="comment">// Attach properties to `this`</span>
+  <span class="comment">//</span>
+  router.attach(<span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{
+    <span class="keyword">this</span>.data = [<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>];
+  });
+
+  <span class="comment">//</span>
+  <span class="comment">// Access properties attached to `this` in your routes!</span>
+  <span class="comment">//</span>
+  router.get(<span class="string">'/hello'</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{
+    <span class="keyword">this</span>.res.writeHead(<span class="number">200</span>, { <span class="string">'content-type'</span>: <span class="string">'text/plain'</span> });
+
+    <span class="comment">//</span>
+    <span class="comment">// Response will be `[1,2,3]`!</span>
+    <span class="comment">//</span>
+    <span class="keyword">this</span>.res.end(<span class="keyword">this</span>.data);
+  });
+</code></pre>
+<p>This API may be used to attach convenience methods to the <code>this</code> context of route handlers.</p>
+<p><a name="http-streaming-body-parsing"></p>
+<h2 id="HTTP_Streaming_and_Body_Parsing">HTTP Streaming and Body Parsing</h2>
+<p>When you are performing HTTP routing there are two common scenarios:</p>
+<ul>
+<li>Buffer the request body and parse it according to the <code>Content-Type</code> header (usually <code>application/json</code> or <code>application/x-www-form-urlencoded</code>).</li>
+<li>Stream the request body by manually calling <code>.pipe</code> or listening to the <code>data</code> and <code>end</code> events.</li>
+</ul>
+<p>By default <code>director.http.Router()</code> will attempt to parse either the <code>.chunks</code> or <code>.body</code> properties set on the request parameter passed to <code>router.dispatch(request, response, callback)</code>. The router instance will also wait for the <code>end</code> event before firing any routes.</p>
+<p><strong>Default Behavior</strong></p>
+<pre><code class="js">  <span class="keyword">var</span> director = <span class="built_in">require</span>(<span class="string">'director'</span>);
+
+  <span class="keyword">var</span> router = <span class="keyword">new</span> director.http.Router();
+
+  router.get(<span class="string">'/'</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{
+    <span class="comment">//</span>
+    <span class="comment">// This will not work, because all of the data</span>
+    <span class="comment">// events and the end event have already fired.</span>
+    <span class="comment">//</span>
+    <span class="keyword">this</span>.req.on(<span class="string">'data'</span>, <span class="function"><span class="keyword">function</span> <span class="params">(chunk)</span> </span>{
+      <span class="built_in">console</span>.log(chunk)
+    });
+  });
+</code></pre>
+<p>In <a href="http://github.com/flatiron/flatiron">flatiron</a>, <code>director</code> is used in conjunction with <a href="http://github.com/flatiron/union">union</a> which uses a <code>BufferedStream</code> proxy to the raw <code>http.Request</code> instance. <a href="http://github.com/flatiron/union">union</a> will set the <code>req.chunks</code> property for you and director will automatically parse the body. If you wish to perform this buffering yourself directly with <code>director</code> you can use a simple request handler in your http server:</p>
+<pre><code class="js">  <span class="keyword">var</span> http = <span class="built_in">require</span>(<span class="string">'http'</span>),
+      director = <span class="built_in">require</span>(<span class="string">'director'</span>);
+
+  <span class="keyword">var</span> router = <span class="keyword">new</span> director.http.Router();
+
+  <span class="keyword">var</span> server = http.createServer(<span class="function"><span class="keyword">function</span> <span class="params">(req, res)</span> </span>{
+    req.chunks = [];
+    req.on(<span class="string">'data'</span>, <span class="function"><span class="keyword">function</span> <span class="params">(chunk)</span> </span>{
+      req.chunks.push(chunk.toString());
+    });
+
+    router.dispatch(req, res, <span class="function"><span class="keyword">function</span> <span class="params">(err)</span> </span>{
+      <span class="keyword">if</span> (err) {
+        res.writeHead(<span class="number">404</span>);
+        res.end();
+      }
+
+      <span class="built_in">console</span>.log(<span class="string">'Served '</span> + req.url);
+    });
+  });
+
+  router.post(<span class="string">'/'</span>, <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{
+    <span class="keyword">this</span>.res.writeHead(<span class="number">200</span>, { <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span> })
+    <span class="keyword">this</span>.res.end(<span class="built_in">JSON</span>.stringify(<span class="keyword">this</span>.req.body));
+  });
+</code></pre>
+<p><strong>Streaming Support</strong></p>
+<p>If you wish to get access to the request stream before the <code>end</code> event is fired, you can pass the <code>{ stream: true }</code> options to the route.</p>
+<pre><code class="js">  <span class="keyword">var</span> director = <span class="built_in">require</span>(<span class="string">'director'</span>);
+
+  <span class="keyword">var</span> router = <span class="keyword">new</span> director.http.Router();
+
+  router.get(<span class="string">'/'</span>, { stream: <span class="literal">true</span> }, <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>{
+    <span class="comment">//</span>
+    <span class="comment">// This will work because the route handler is invoked</span>
+    <span class="comment">// immediately without waiting for the `end` event.</span>
+    <span class="comment">//</span>
+    <span class="keyword">this</span>.req.on(<span class="string">'data'</span>, <span class="function"><span class="keyword">function</span> <span class="params">(chunk)</span> </span>{
+      <span class="built_in">console</span>.log(chunk);
+    });
+  });
+</code></pre>
+<p><a name="instance-methods"></a></p>
+<h2 id="Instance_methods">Instance methods</h2>
+<h3 id="configure(options)">configure(options)</h3>
+<ul>
+<li><code>options</code> {Object}: Options to configure this instance with.</li>
+</ul>
+<p>Configures the Router instance with the specified <code>options</code>. See <a href="#configuration">Configuration</a> for more documentation.</p>
+<h3 id="param(token,_matcher)">param(token, matcher)</h3>
+<ul>
+<li>token {string}: Named parameter token to set to the specified <code>matcher</code></li>
+<li>matcher {string|Regexp}: Matcher for the specified <code>token</code>.</li>
+</ul>
+<p>Adds a route fragment for the given string <code>token</code> to the specified regex <code>matcher</code> to this Router instance. See <a href="#url-params">URL Parameters</a> for more documentation.</p>
+<h3 id="on(method,_path,_route)">on(method, path, route)</h3>
+<ul>
+<li><code>method</code> {string}: Method to insert within the Routing Table (e.g. <code>on</code>, <code>get</code>, etc.).</li>
+<li><code>path</code> {string}: Path within the Routing Table to set the <code>route</code> to.</li>
+<li><code>route</code> {function|Array}: Route handler to invoke for the <code>method</code> and <code>path</code>.</li>
+</ul>
+<p>Adds the <code>route</code> handler for the specified <code>method</code> and <code>path</code> within the <a href="#routing-table">Routing Table</a>.</p>
+<h3 id="path(path,_routesFn)">path(path, routesFn)</h3>
+<ul>
+<li><code>path</code> {string|Regexp}: Scope within the Routing Table to invoke the <code>routesFn</code> within.</li>
+<li><code>routesFn</code> {function}: Adhoc Routing function with calls to <code>this.on()</code>, <code>this.get()</code> etc.</li>
+</ul>
+<p>Invokes the <code>routesFn</code> within the scope of the specified <code>path</code> for this Router instance.</p>
+<h3 id="dispatch(method,_path[,_callback])">dispatch(method, path[, callback])</h3>
+<ul>
+<li>method {string}: Method to invoke handlers for within the Routing Table</li>
+<li>path {string}: Path within the Routing Table to match</li>
+<li>callback {function}: Invoked once all route handlers have been called.</li>
+</ul>
+<p>Dispatches the route handlers matched within the <a href="#routing-table">Routing Table</a> for this instance for the specified <code>method</code> and <code>path</code>.</p>
+<h3 id="mount(routes,_path)">mount(routes, path)</h3>
+<ul>
+<li>routes {object}: Partial routing table to insert into this instance.</li>
+<li>path {string|Regexp}: Path within the Routing Table to insert the <code>routes</code> into.</li>
+</ul>
+<p>Inserts the partial <a href="#routing-table">Routing Table</a>, <code>routes</code>, into the Routing Table for this Router instance at the specified <code>path</code>.</p>
+<h2 id="Instance_methods_(Client-side_only)">Instance methods (Client-side only)</h2>
+<h3 id="init([redirect])">init([redirect])</h3>
+<ul>
+<li><code>redirect</code> {String}: This value will be used if ‘/#/‘ is not found in the URL. (e.g., init(‘/‘) will resolve to ‘/#/‘, init(‘foo’) will resolve to ‘/#foo’).</li>
+</ul>
+<p>Initialize the router, start listening for changes to the URL.</p>
+<h3 id="getRoute([index])">getRoute([index])</h3>
+<ul>
+<li><code>index</code> {Number}: The hash value is divided by forward slashes, each section then has an index, if this is provided, only that section of the route will be returned.</li>
+</ul>
+<p>Returns the entire route or just a section of it.</p>
+<h3 id="setRoute(route)">setRoute(route)</h3>
+<ul>
+<li><code>route</code> {String}: Supply a route value, such as <code>home/stats</code>.</li>
+</ul>
+<p>Set the current route.</p>
+<h3 id="setRoute(start,_length)">setRoute(start, length)</h3>
+<ul>
+<li><code>start</code> {Number} - The position at which to start removing items.</li>
+<li><code>length</code> {Number} - The number of items to remove from the route.</li>
+</ul>
+<p>Remove a segment from the current route.</p>
+<h3 id="setRoute(index,_value)">setRoute(index, value)</h3>
+<ul>
+<li><code>index</code> {Number} - The hash value is divided by forward slashes, each section then has an index.</li>
+<li><code>value</code> {String} - The new value to assign the the position indicated by the first parameter.</li>
+</ul>
+<p>Set a segment of the current route.</p>
+<p><a name="faq"></a></p>
+<h1 id="Frequently_Asked_Questions">Frequently Asked Questions</h1>
+<h2 id="What_About_SEO?">What About SEO?</h2>
+<p>Is using a Client-side router a problem for SEO? Yes. If advertising is a requirement, you are probably building a “Web Page” and not a “Web Application”. Director on the client is meant for script-heavy Web Applications.</p>
+<h1 id="Licence">Licence</h1>
+<p>(The MIT License)</p>
+<p>Copyright (c) 2010 Nodejitsu Inc. <a href="http://www.twitter.com/nodejitsu">http://www.twitter.com/nodejitsu</a></p>
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the ‘Software’), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+<p>THE SOFTWARE IS PROVIDED ‘AS IS’, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>

@@ -1,0 +1,43 @@
+<h1 id="How_to_contribute">How to contribute</h1>
+<ul>
+<li><a href="#getting-help-">Getting help</a></li>
+<li><a href="#submitting-bug-reports-">Submitting bug reports</a></li>
+<li><a href="#contributing-code-">Contributing code</a></li>
+</ul>
+<h2 id="Getting_help">Getting help</h2>
+<p>Community discussion, questions, and informal bug reporting is done on the<br><a href="http://groups.google.com/group/codemirror">CodeMirror Google group</a>.</p>
+<h2 id="Submitting_bug_reports">Submitting bug reports</h2>
+<p>The preferred way to report bugs is to use the<br><a href="http://github.com/marijnh/CodeMirror/issues">GitHub issue tracker</a>. Before<br>reporting a bug, read these pointers.</p>
+<p><strong>Note:</strong> The issue tracker is for <em>bugs</em>, not requests for help. Questions<br>should be asked on the<br><a href="http://groups.google.com/group/codemirror">CodeMirror Google group</a> instead.</p>
+<h3 id="Reporting_bugs_effectively">Reporting bugs effectively</h3>
+<ul>
+<li><p>CodeMirror is maintained by volunteers. They don’t owe you anything, so be<br>polite. Reports with an indignant or belligerent tone tend to be moved to the<br>bottom of the pile.</p>
+</li>
+<li><p>Include information about <strong>the browser in which the problem occurred</strong>. Even<br>if you tested several browsers, and the problem occurred in all of them,<br>mention this fact in the bug report. Also include browser version numbers and<br>the operating system that you’re on.</p>
+</li>
+<li><p>Mention which release of CodeMirror you’re using. Preferably, try also with<br>the current development snapshot, to ensure the problem has not already been<br>fixed.</p>
+</li>
+<li><p>Mention very precisely what went wrong. “X is broken” is not a good bug<br>report. What did you expect to happen? What happened instead? Describe the<br>exact steps a maintainer has to take to make the problem occur. We can not<br>fix something that we can not observe.</p>
+</li>
+<li><p>If the problem can not be reproduced in any of the demos included in the<br>CodeMirror distribution, please provide an HTML document that demonstrates<br>the problem. The best way to do this is to go to<br><a href="http://jsbin.com/ihunin/edit">jsbin.com</a>, enter it there, press save, and<br>include the resulting link in your bug report.</p>
+</li>
+</ul>
+<h2 id="Contributing_code">Contributing code</h2>
+<ul>
+<li>Make sure you have a <a href="https://github.com/signup/free">GitHub Account</a></li>
+<li>Fork <a href="https://github.com/marijnh/CodeMirror/">CodeMirror</a><br>(<a href="https://help.github.com/articles/fork-a-repo">how to fork a repo</a>)</li>
+<li>Make your changes</li>
+<li>If your changes are easy to test or likely to regress, add tests.<br>Tests for the core go into <code>test/test.js</code>, some modes have their own<br>test suite under <code>mode/XXX/test.js</code>. Feel free to add new test<br>suites to modes that don’t have one yet (be sure to link the new<br>tests into <code>test/index.html</code>).</li>
+<li>Follow the general code style of the rest of the project (see<br>below). Run <code>bin/lint</code> to verify that the linter is happy.</li>
+<li>Make sure all tests pass. Visit <code>test/index.html</code> in your browser to<br>run them.</li>
+<li>Submit a pull request<br>(<a href="https://help.github.com/articles/fork-a-repo">how to create a pull request</a>)</li>
+</ul>
+<h3 id="Coding_standards">Coding standards</h3>
+<ul>
+<li>2 spaces per indentation level, no tabs.</li>
+<li>Include semicolons after statements.</li>
+<li><p>Note that the linter (<code>bin/lint</code>) which is run after each commit<br>complains about unused variables and functions. Prefix their names<br>with an underscore to muffle it.</p>
+</li>
+<li><p>CodeMirror does <em>not</em> follow JSHint or JSLint prescribed style.<br>Patches that try to ‘fix’ code to pass one of these linters will be<br>unceremoniously discarded.</p>
+</li>
+</ul>

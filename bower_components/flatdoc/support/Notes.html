@@ -1,0 +1,18 @@
+<h1 id="Development_notes">Development notes</h1>
+<h3 id="One-time_setup">One-time setup</h3>
+<p>You probably want to install the toolchain:</p>
+<pre><code><span class="variable">$ </span>npm install
+</code></pre><h3 id="Auto-generate_files">Auto-generate files</h3>
+<p>This will (re-) build auto-generated files (stylus, etc).</p>
+<pre><code><span class="variable">$ </span>make
+<span class="variable">$ </span>make -<span class="constant">B</span>       <span class="comment"># Recompiles things</span>
+</code></pre><h3 id="Update_vendor_files">Update vendor files</h3>
+<p>This will download files.</p>
+<pre><code>$ <span class="keyword">cd</span> support/vendor/; <span class="keyword">make</span> *.js
+</code></pre><h3 id="Make_a_release">Make a release</h3>
+<p>This will concat/compress things into a build in <code>/v/0.8.0</code>.</p>
+<pre><code>$ <span class="keyword">make</span> <span class="keyword">v</span>/<span class="number">0.8</span>.<span class="number">0</span>
+</code></pre><h2 id="To_do">To do</h2>
+<ul>
+<li>Sectioning</li>
+</ul>

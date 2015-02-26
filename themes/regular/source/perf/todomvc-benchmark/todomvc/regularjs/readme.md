@@ -1,2 +1,0 @@
-# regularjs TodoMVC Example
-

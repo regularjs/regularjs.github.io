@@ -1,0 +1,641 @@
+<h1 id="Backbone_Patterns"><a href="http://ricostacruz.com/backbone-patterns">Backbone Patterns</a></h1>
+<p>Backbone.js gives structure to web applications by providing models with<br>key-value binding and custom events, collections with a rich API of enumerable<br>functions, views with declarative event handling, and connects it all to your<br>existing API over a RESTful JSON interface.</p>
+<p>The project is hosted on GitHub, and the annotated source code is available, as well as an online test suite, an example application, a list of tutorials and a long list of real-world projects that use Backbone. Backbone is available for use under the MIT software license.</p>
+<p>You can report bugs and discuss features on the GitHub issues page, on Freenode IRC in the #documentcloud channel, post questions to the Google Group, add pages to the wiki or send tweets to @documentcloud.</p>
+<p>Backbone is an open-source component of DocumentCloud.</p>
+<p>Here, I try to document the good practices that our team has learned along the<br>way building <a href="http://documentcloud.github.com/backbone/">Backbone</a> applications.</p>
+<p>This document assumes that you already have some knowledge of <a href="http://documentcloud.github.com/backbone/">Backbone.js</a>,<br><a href="http://jquery.com/">jQuery</a>, and of course, JavaScript itself.</p>
+<h1 id="Model_patterns">Model patterns</h1>
+<p>Here are some patterns that would apply to Backbone models.</p>
+<h2 id="Bootstrapping_data">Bootstrapping data</h2>
+<p><strong>The problem:</strong> Your application needs models to be available on page load.</p>
+<p><strong>Solution:</strong> Bootstrap collections and models by creating collections in an<br>inline <code>&lt;script&gt;</code> block.</p>
+<p>This is mentioned in the official Backbone documentation under the <a href="http://documentcloud.github.com/backbone/#FAQ-bootstrap">Loading<br>bootstrapped models</a> section.</p>
+<h4 id="Define_collection_data">Define collection data</h4>
+<p>Define your collection data in an inline script in the HTML file.<br>If you have collections for <code>Photos</code>, you may be doing it this way:</p>
+<pre><code class="html">  <span class="tag">&lt;<span class="title">body</span>&gt;</span>
+    ...
+
+    <span class="tag">&lt;<span class="title">script</span>&gt;</span><span class="javascript">
+      App.photos = <span class="keyword">new</span> Photos([
+        { id: <span class="number">2</span>, name: <span class="string">"My dog"</span>, filename: <span class="string">"IMG_0392.jpg"</span> },
+        { id: <span class="number">3</span>, name: <span class="string">"Our house"</span>, filename: <span class="string">"IMG_0393.jpg"</span> },
+        { id: <span class="number">4</span>, name: <span class="string">"My favorite food"</span>, filename: <span class="string">"IMG_0394.jpg"</span> },
+        { id: <span class="number">5</span>, name: <span class="string">"His bag"</span>, filename: <span class="string">"IMG_0394.jpg"</span> },
+        ...
+      ]);
+    </span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">body</span>&gt;</span>
+</code></pre>
+<h4 id="Accessing_instances">Accessing instances</h4>
+<p>To get a single <code>Photo</code>, instead of creating a <code>Photo</code> instance and using<br><code>fetch()</code>, simply pluck it from the giant collection.</p>
+<pre><code class="javascript"><span class="comment">// Gets by ID</span>
+<span class="keyword">var</span> photo = App.photos.get(<span class="number">2</span>);
+
+<span class="comment">// Gets a bunch of photos based on criteria</span>
+<span class="keyword">var</span> photo = App.photos.select(<span class="function"><span class="keyword">function</span><span class="params">(photo)</span> </span>{
+  <span class="keyword">return</span> photo.filename.match(<span class="regexp">/^IMG/</span>);
+});
+</code></pre>
+<h4 id="In_Ruby_(ERB)">In Ruby (ERB)</h4>
+<p>In your server-side templates, you will probably be using <code>to_json</code> on a<br>collection of your server-side models.</p>
+<pre><code class="html"><span class="tag">&lt;<span class="title">script</span>&gt;</span><span class="javascript">
+  App.photos = <span class="keyword">new</span> Photos(<span class="xml"><span class="vbscript">&lt;%= @photos.to_json %&gt;</span>);
+</span></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+</code></pre>
+<h4 id="In_Ruby_(HAML)">In Ruby (HAML)</h4>
+<p>If you use HAML, you will need use a syntax similar to this.</p>
+<pre><code class="haml">:javascript
+  App.photos = new Photos(#{<span class="ruby"><span class="variable">@photos</span>.to_json}</span>);
+</code></pre>
+<h4 id="In_PHP">In PHP</h4>
+<p>In your server-side templates, you will probably be using <code>json_encode()</code> on a<br>collection of your server-side models.</p>
+<pre><code class="php">&lt;script&gt;
+  App.photos = <span class="keyword">new</span> Photos(<span class="preprocessor">&lt;?php</span> <span class="keyword">echo</span> json_encode(<span class="variable">$photos</span>); <span class="preprocessor">?&gt;</span>);
+&lt;/script&gt;
+</code></pre>
+<h1 id="View_patterns">View patterns</h1>
+<h2 id="Inline_templates">Inline templates</h2>
+<p><strong>The problem:</strong> if you need to use view templates in a small Backbone<br>application, defining your templates in JavaScript code will be unwieldy and<br>difficult to maintain.</p>
+<p><strong>Solution:</strong> You may need some view templates to be inline in the HTML page.</p>
+<p>This solution has been outlined by John Resig in his blog post about <a href="http://ejohn.org/blog/javascript-micro-templating/">JavaScript<br>micro templating</a>.</p>
+<h4 id="Defining_inline_templates">Defining inline templates</h4>
+<p>You can put templates in an HTML <code>&lt;script&gt;</code> tag.</p>
+<ul>
+<li><p><em>Change the <code>type</code> attribute</em> to something else so it will not be interpreted<br>as JavaScript.</p>
+</li>
+<li><p><em>Set an <code>id</code></em> so we can easily refer to it.</p>
+</li>
+</ul>
+<pre><code class="html"><span class="tag">&lt;<span class="title">script</span> <span class="attribute">type</span>=<span class="value">"text/html"</span> <span class="attribute">id</span>=<span class="value">"template-contact"</span>&gt;</span><span class="javascript">
+  &lt;div <span class="keyword">class</span>=<span class="string">'contact'</span>&gt;
+    <span class="xml"><span class="tag">&lt;<span class="title">strong</span>&gt;</span><span class="vbscript">&lt;%= name %&gt;</span><span class="tag">&lt;/<span class="title">strong</span>&gt;</span>
+    <span class="tag">&lt;<span class="title">span</span>&gt;</span><span class="vbscript">&lt;%= email %&gt;</span><span class="tag">&lt;/<span class="title">span</span>&gt;</span>
+  <span class="tag">&lt;/<span class="title">div</span>&gt;</span>
+</span></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+</code></pre>
+<h4 id="Using_inline_templates">Using inline templates</h4>
+<p>In JavaScript, you can get the <code>innerHTML</code> (or jQuery’s <a href="http://api.jquery.com/html">.html()</a>) of that<br>HTML element to fetch the raw template data. You can pass this onto Underscore’s<br><code>_.template</code> to create a template function.</p>
+<pre><code class="javascript">$(<span class="string">"#template-contact"</span>).html();
+<span class="comment">//=&gt; "&lt;div class='contact'&gt;\n&lt;strong&gt;&lt;%= name %&gt;&lt;/str..."</span>
+
+template = _.template($(<span class="string">"#template-contact"</span>).html());
+<span class="comment">//=&gt; function() { ... }</span>
+</code></pre>
+<h4 id="Integrating_into_Backbone">Integrating into Backbone</h4>
+<p>In practice, you will most likely be using this in the <code>render()</code> method of a<br>view like so.</p>
+<pre><code class="javascript"><span class="keyword">var</span> ContactView = Backbone.View.extend({
+  template: _.template($(<span class="string">"#template-contact"</span>).html()),
+
+  render: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    <span class="comment">// This is a dictionary object of the attributes of the models.</span>
+    <span class="comment">// =&gt; { name: "Jason", email: "j.smith@gmail.com" }</span>
+    <span class="keyword">var</span> dict = <span class="keyword">this</span>.model.toJSON();
+
+    <span class="comment">// Pass this object onto the template function.</span>
+    <span class="comment">// This returns an HTML string.</span>
+    <span class="keyword">var</span> html = <span class="keyword">this</span>.template(dict);
+
+    <span class="comment">// Append the result to the view's element.</span>
+    $(<span class="keyword">this</span>.el).append(html);
+
+    <span class="comment">// ...</span>
+  }
+});
+</code></pre>
+<h4 id="Limitations">Limitations</h4>
+<p><strong>Single-page apps only.</strong><br>This assumes that your Backbone application is all contained in one HTML page.<br>If your app spans across multiple HTML pages, and each page will be needing the<br>same templates, you may be redundantly streaming the template data to the<br>browser unnecessarily. Consider using JST templates instead.</p>
+<p>Note that the given example assumes that the <code>#template-contact</code> element appears<br>before you include JavaScript files, as it requires the template element to be<br>accessible before the class is defined.</p>
+<h2 id="JST_templates">JST templates</h2>
+<p><strong>The problem:</strong> if you need to use view templates in a small-to-large Backbone<br>application, defining your templates in JavaScript code will be unwieldy and<br>difficult to maintain.</p>
+<p><strong>Solution:</strong> You may need put the templates in a JavaScript file.</p>
+<h4 id="The_structure">The structure</h4>
+<p>Your app will need to serve a <em>dynamically-created</em> JavaScript file that<br>compiles your files.</p>
+<p>A common JST file will create the <code>JST</code> object (in the window namespace), with<br>each of its members defined as template functions. In this example, we’ll use<br>Underscore’s <code>_.template</code>, which returns functions.</p>
+<pre><code class="javascript"><span class="comment">// http://myapp.com/javascripts/jst.js</span>
+<span class="built_in">window</span>.JST = {};
+
+<span class="built_in">window</span>.JST[<span class="string">'person/contact'</span>] = _.template(
+    <span class="string">"&lt;div class='contact'&gt;&lt;%= name %&gt; ..."</span>
+);
+
+<span class="built_in">window</span>.JST[<span class="string">'person/edit'</span>] = _.template(
+    <span class="string">"&lt;form method='post'&gt;&lt;input type..."</span>
+);
+</code></pre>
+<p>You will then need to link to this JavaScript page in your HTML.</p>
+<pre><code class="html"><span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"http://myapp.com/javascripts/jst.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+</code></pre>
+<h4 id="Using_JST_templates">Using JST templates</h4>
+<p>In your JavaScript code, simply access the JST object’s members to access the<br>views.</p>
+<pre><code class="javascript"><span class="keyword">var</span> html = JST[<span class="string">'person/edit'</span>]();
+
+<span class="keyword">var</span> dict = { name: <span class="string">"Jason"</span>, email: <span class="string">"j.smith@gmail.com"</span> };
+<span class="keyword">var</span> html = JST[<span class="string">'person/contact'</span>](dict);
+</code></pre>
+<h4 id="Integration_notes">Integration notes</h4>
+<ul>
+<li><strong>Rails 3.1 and above</strong>: The Rails Asset pipeline already comes with support<br>for JST pages.</li>
+<li><strong>Rails 3.0 and below</strong>: consider using <a href="http://getsprockets.org">Sprockets</a> or<br><a href="http://documentcloud.github.com/jammit">Jammit</a>.</li>
+<li><strong>In Sinatra</strong>: The <a href="http://ricostacruz.com/sinatra-backbone">sinatra-backbone</a> gem can take care of<br>dynamically serving JST templates.</li>
+</ul>
+<h2 id="Partials">Partials</h2>
+<p><strong>The problem:</strong> there may be parts of HTML templates that can be reused in many<br>parts of the application. Defining them more than once is not DRY, which may<br>make your application less maintainable.</p>
+<p><strong>Solution:</strong> separating these snippets into partials.</p>
+<p>Partials are templates that are meant to be used <em>inside</em> other templates.</p>
+<p>One typical use of partials is for lists where the template for list items may<br>be defined as a separate template from the list itself.</p>
+<h4 id="Solution">Solution</h4>
+<p>You can pass the template function for the partial as a parameter to the first<br>template.</p>
+<p>In this example, the function <code>itemTemplate</code> is passed onto the parameters for<br><code>template()</code>.</p>
+<pre><code class="javascript">TasksList = Backbone.View.extend({
+  template: _.template([
+    <span class="string">"&lt;ul class='task_list'&gt;"</span>,
+      <span class="string">"&lt;% items.each(function(item) { %&gt;"</span>,
+        <span class="string">"&lt;%= itemTemplate(item) %&gt;"</span>,
+      <span class="string">"&lt;% }); %&gt;"</span>,
+    <span class="string">"&lt;/ul&gt;"</span>
+  ].join(<span class="string">''</span>)),
+
+  itemTemplate: _.template(
+    <span class="string">"&lt;li&gt;&lt;%= name %&gt;&lt;/li&gt;"</span>
+  ),
+
+  render: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    <span class="keyword">var</span> html = <span class="keyword">this</span>.template({
+      items: tasks <span class="comment">/* a collection */</span>,
+      itemTemplate: <span class="keyword">this</span>.itemTemplate
+    });
+
+    $(<span class="keyword">this</span>.el).append(html);
+  }
+});
+</code></pre>
+<h2 id="Animation_buffer">Animation buffer</h2>
+<p><strong>The problem:</strong> When you have events that trigger animations, they can mess up<br>when the user clicks too fast.</p>
+<p><strong>The solution:</strong> Make a buffering system to ensure that animations are fired<br>serially (one after the other) and never parallel (at the same time).</p>
+<h4 id="The_situation">The situation</h4>
+<p>Let’s say you have this innocent code that performs an animation.</p>
+<p>One fundamental flaw here is that it assumes that <code>.showNext()</code> will only be<br>called when it is not animating. When the user clicks “Next” while the animation<br>is working, unexpected results will occur.</p>
+<pre><code class="javascript">PicturesView = Backbone.View.extend({
+  events: {
+    <span class="string">'click .next'</span>: <span class="string">'showNext'</span>
+  },
+
+  showNext: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    <span class="keyword">var</span> current = <span class="keyword">this</span>.$(<span class="string">".current"</span>);
+    <span class="keyword">var</span> nextDiv = <span class="keyword">this</span>.$(<span class="string">".current + div"</span>);
+
+    <span class="keyword">if</span> (nextDiv.length == <span class="number">0</span>) { <span class="keyword">return</span>; }
+
+    <span class="comment">// Make the current one move to the left via jQuery.</span>
+    <span class="comment">// This uses jQuery.fn.animate() that changes CSS values, then fires</span>
+    <span class="comment">// the function supplied when it's done.</span>
+    current.animate({ left: -<span class="number">300</span>, opacity: <span class="number">0</span> }, <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+      current.removeClass(<span class="string">'.current'</span>);
+      nextDiv.addClass(<span class="string">'.current'</span>);
+    });
+  }
+});
+</code></pre>
+<h4 id="The_solution">The solution</h4>
+<p>Here’s a simple buffering solution. It provides two commands:</p>
+<ul>
+<li><code>add(fn)</code> which adds a given function to the buffer, and</li>
+<li><code>next()</code> which moves onto the next command. This is passed onto the functions<br>when they are called.</li>
+</ul>
+<p>To use this, put your animations inside an anonymous function to be passed onto<br><code>add()</code>. Be sure to trigger <code>next()</code> when the animations are done.</p>
+<pre><code class="javascript">Buffer = {
+  commands: [],
+
+  add: <span class="function"><span class="keyword">function</span><span class="params">(fn)</span> </span>{
+    <span class="comment">// Adds a command to the buffer, and executes it if it's</span>
+    <span class="comment">// the only command to be ran.</span>
+    <span class="keyword">var</span> commands = <span class="keyword">this</span>.commands;
+    commands.push(fn);
+    <span class="keyword">if</span> (<span class="keyword">this</span>.commands.length == <span class="number">1</span>) fn(next);
+
+    <span class="comment">// Moves onto the next command in the buffer.</span>
+    <span class="function"><span class="keyword">function</span> <span class="title">next</span><span class="params">()</span> </span>{
+      commands.shift();
+      <span class="keyword">if</span> (commands.length) commands[<span class="number">0</span>](next);
+    }
+  }
+};
+</code></pre>
+<h4 id="Example">Example</h4>
+<p>This is our example from a while ago that has been modified to use the bufferer.</p>
+<pre><code class="javascript">showNext: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+  <span class="keyword">var</span> current = <span class="keyword">this</span>.$(<span class="string">".current"</span>);
+  <span class="keyword">var</span> nextDiv = <span class="keyword">this</span>.$(<span class="string">".current + div"</span>);
+
+  <span class="keyword">if</span> (nextDiv.length == <span class="number">0</span>) { <span class="keyword">return</span>; }
+
+  <span class="comment">// Ensure that the animation will not happen while another</span>
+  <span class="comment">// animation is ongoing.</span>
+  Buffer.add(<span class="function"><span class="keyword">function</span><span class="params">(next)</span> </span>{
+    current.animate({ left: -<span class="number">300</span>, opacity: <span class="number">0</span> }, <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+      current.removeClass(<span class="string">'.current'</span>);
+      nextDiv.addClass(<span class="string">'.current'</span>);
+
+      <span class="comment">// Trigger the next animation.</span>
+      next();
+    });
+  });
+}
+</code></pre>
+<h4 id="Variations">Variations</h4>
+<p>You can make the <code>Buffer</code> object into a class that you can instantiate. This<br>lets you have multiple buffers as you need. This way, you can have a buffer for<br>each view instance.</p>
+<p>jQuery also provides a very similar function, <a href="http://api.jquery.com/queue/">jQuery.fn.queue()</a>. This<br>may be adequate for most simple animations.</p>
+<h2 id="Sub_views">Sub views</h2>
+<p><strong>The problem:</strong> Your view code is starting to bloat as it tries to do too many<br>things in one class.</p>
+<p><strong>The solution:</strong> Break it apart into smaller sub-views.</p>
+<h4 id="The_situation-1">The situation</h4>
+<p>This is a common occurrence if you have one <em>giant</em> view that takes care of the<br>entire page. View classes may become unwieldy once they get up to 200 lines.</p>
+<h4 id="Solution_1:_Sub_views">Solution 1: Sub views</h4>
+<p>It may be wise to delegate some areas of the view to be the responsibility of<br>another view.</p>
+<p>In this example, we have a view that handles the entire application “chrome.”<br>Let’s break apart some of its parts on its <code>render()</code> function. Notice that<br>we’re using <code>this.$()</code> to select elements inside the <code>ChromeView</code>‘s element<br>itself.</p>
+<pre><code class="javascript">App.ChromeView = Backbone.View.extend({
+  render: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    <span class="comment">// Instantiate some "sub" views to handle the responsibilities of</span>
+    <span class="comment">// their respective elements.</span>
+    <span class="keyword">this</span>.sidebar = <span class="keyword">new</span> App.SidebarView({ el: <span class="keyword">this</span>.$(<span class="string">".sidebar"</span>) });
+    <span class="keyword">this</span>.menu = <span class="keyword">new</span> App.NavigationView({ el: <span class="keyword">this</span>.$(<span class="string">"nav"</span>) });
+  }
+});
+
+$(<span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+  App.chrome = <span class="keyword">new</span> App.ChromeView({ el: $(<span class="string">"#chrome"</span>) });
+});
+</code></pre>
+<p>We will then be able to access the sub-views like so:</p>
+<pre><code class="javascript">App.chrome.sidebar.toggle();
+
+App.chrome.menu.expand();
+</code></pre>
+<h4 id="Events">Events</h4>
+<p>All Backbone objects can emit <a href="http://documentcloud.github.com/backbone/#Events">events</a>. To maintain the separation of<br>responsibilities of the view classes, you may have the sub-views trigger<br>events that the parent view would need (and vice versa).</p>
+<p>For instance, we may implement <code>SidebarView</code> to trigger events when the sidebar<br>is collapsed or expanded:</p>
+<pre><code class="javascript">App.SidebarView = Backbone.View.extend({
+  toggle: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    <span class="keyword">if</span> ($(<span class="keyword">this</span>.el).is(<span class="string">':visible'</span>)) {
+      $(<span class="keyword">this</span>.el).hide();
+      <span class="keyword">this</span>.trigger(<span class="string">'collapse'</span>);    <span class="comment">// &lt;==</span>
+    } <span class="keyword">else</span> {
+      $(<span class="keyword">this</span>.el).show();
+      <span class="keyword">this</span>.trigger(<span class="string">'expand'</span>);      <span class="comment">// &lt;==</span>
+    }
+  },
+});
+</code></pre>
+<p>And the parent view (<code>ChromeView</code>) may listen to them like so:</p>
+<pre><code class="javascript">App.ChromeView = Backbone.View.extend({
+  render: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    <span class="keyword">this</span>.sidebar = <span class="keyword">new</span> App.SidebarView({ el: <span class="keyword">this</span>.$(<span class="string">".sidebar"</span>) });
+
+    <span class="keyword">this</span>.sidebar
+      .bind(<span class="string">'collapse'</span>, <span class="keyword">this</span>.onSidebarCollapse)
+      .bind(<span class="string">'expand'</span>,   <span class="keyword">this</span>.onSidebarExpand);
+
+    <span class="comment">// ...</span>
+  }
+});
+</code></pre>
+<h2 id="Delegate_views">Delegate views</h2>
+<p><strong>The problem:</strong> Your view code is starting to bloat as it tries to do too many<br>things in one class, and making sub-views with its child elements is not an<br>option.</p>
+<p><strong>The solution:</strong> Make a sub-view with the same element. This will allow you to<br><a href="http://en.wikipedia.org/wiki/Delegation_pattern">delegate</a> certain responsibilities to another view class.</p>
+<h4 id="Solution-1">Solution</h4>
+<p>You can make 2 or more views that target the same element. This is useful when<br>there are many controls in a view, but creating sub-views (with their scopes<br>limited to a set of elements in the bigger view) may be too messy, or just not<br>possible.</p>
+<p>In this example, <code>ChromeView</code> will make a sub-view that shares the same element<br>as it does.</p>
+<pre><code class="javascript">App.ChromeView = Backbone.View.extend({
+  events: {
+    <span class="string">'click button'</span>: <span class="string">'onButtonClick'</span>
+  },
+  render: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    <span class="comment">// Pass our own element to the other view.</span>
+    <span class="keyword">this</span>.tabs = <span class="keyword">new</span> App.TabView({ el: <span class="keyword">this</span>.el });
+  }
+});
+
+App.TabView = Backbone.View.extend({
+  <span class="comment">// Notice this view has its own events. They will not</span>
+  <span class="comment">// interfere with ChromeView's events.</span>
+  events: {
+    <span class="string">'click nav.tabs a'</span>: <span class="string">'switchTab'</span>
+  },
+
+  switchTo: <span class="function"><span class="keyword">function</span><span class="params">(tab)</span> </span>{
+    <span class="comment">// ...</span>
+  },
+
+  hide: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    <span class="comment">// ...</span>
+  }
+});
+</code></pre>
+<h4 id="Using_delegate_views">Using delegate views</h4>
+<p>You can delegate some functionality to the sub-view. In this example, we can<br>write the (potentially long) code for hiding tabs in the <code>TabView</code>, making<br><code>ChromeView</code> easier to maintain and manage.</p>
+<pre><code class="javascript">App.ChromeView = Backbone.View.extend({
+  <span class="comment">// ...</span>
+
+  goFullscreen: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    <span class="keyword">this</span>.tabs.hide();
+  }
+});
+</code></pre>
+<p>You may also provide publicly-accessible methods to <code>TabView</code> that will be meant<br>to be accessed outside of <code>ChromeView</code>.</p>
+<pre><code class="javascript"><span class="keyword">var</span> chrome = <span class="keyword">new</span> App.ChromeView;
+chrome.tabs.switchTo(<span class="string">'home'</span>);
+</code></pre>
+<h4 id="Variation:_private_delegate_views">Variation: private delegate views</h4>
+<p>You can also make delegate views <em>private</em> by design: that is, it shouldn’t be<br>used outside the parent view (<code>ChromeView</code> in our example).</p>
+<p>As JavaScript lacks true private attributes, you can set prefix it with an<br>underscore to signify that it’s private and is not part of it’s public<br>interface. (This is a practice taken from Python’s <a href="http://www.python.org/dev/peps/pep-0008/">official style<br>guide</a>.)</p>
+<pre><code class="javascript">App.ChromeView = Backbone.View.extend({
+  render: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    <span class="keyword">this</span>._tabs = <span class="keyword">new</span> App.TabView({ el: <span class="keyword">this</span>.el });
+  }
+});
+</code></pre>
+<h1 id="General_patterns">General patterns</h1>
+<h2 id="Mixins">Mixins</h2>
+<p><strong>The problem:</strong> Sometimes you have the same functionality for multiple objects and it doesn’t<br>make sense to wrap your objects in a parent object. For example, if you have<br>two views that share methods but don’t — and shouldn’t — have a shared<br>parent view.</p>
+<p><strong>The solution:</strong> For this scenario, it’s appropriate to use a mixin.</p>
+<h4 id="Defining_mixins">Defining mixins</h4>
+<p>You can define an object that has attributes and methods that can be shared<br>across different classes. This is called a <a href="http://en.wikipedia.org/wiki/Mixin">mixin</a>.</p>
+<p>You can define a mixin as a regular object literal with functions in it.</p>
+<pre><code class="javascript">App.Mixins.Navigation = {
+
+  toggle: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{ <span class="comment">/* ... */</span> },
+
+  open: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{ <span class="comment">/*... */</span> },
+
+  close: <span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{ <span class="comment">/* ... */</span> }
+
+};
+</code></pre>
+<h4 id="Using_mixins">Using mixins</h4>
+<p>You may then extend your classes with these mixins. You can use Underscore’s<br><a href="http://documentcloud.github.com/underscore/#extend">_.extend</a> function to attach these to your class prototypes.</p>
+<pre><code class="javascript">App.Views.Menu = Backbone.View.extend({
+  <span class="comment">// I need to know how to toggle, open, and close!</span>
+});
+
+_.extend(App.Views.Menu.prototype, App.Mixins.Navigation);
+
+App.Views.Tabs = Backbone.View.extend({
+  <span class="comment">// I too need to know how to toggle, open, and close!</span>
+});
+
+_.extend(App.Views.Tabs.prototype, App.Mixins.Navigation);
+</code></pre>
+<h4 id="Alternative_syntax">Alternative syntax</h4>
+<p>The above presents two caveats, which can be problematic in some situations:</p>
+<ul>
+<li><p>Your attributes and methods in your mixin will <em>override</em> the methods you<br>define in the class itself (via <code>Backbone.View.extend</code>). Ideally, it should be<br>the other way around.</p>
+</li>
+<li><p>The <code>_.extend(...)</code> line is after all the methods you’ve defined in the<br>class, and can easily be neglected by developers new to your project.</p>
+</li>
+</ul>
+<p>To remedy this, you can use this alterative syntax. This will let you write<br>methods and attributes in your class that will override the mixin’s default<br>behavior.</p>
+<pre><code class="javascript">App.Views.Menu = Backbone.View.extend(
+  _.extend({}, App.Mixins.Navigation, {
+
+  <span class="comment">// (Methods and attributes here)</span>
+
+}));
+
+App.Views.Tabs = Backbone.View.extend(
+  _.extend({}, App.Mixins.Navigation, {
+
+  <span class="comment">// (Methods and attributes here)</span>
+
+}));
+</code></pre>
+<h4 id="Result">Result</h4>
+<p>The prototypes for your views now both have the methods defined in your mixin.<br>New <code>App.Views.Tabs</code> and <code>App.Views.Menu</code> instances will now be able to respond<br>to <code>.toggle()</code>, <code>.open()</code> and <code>.close()</code>.</p>
+<pre><code class="javascript"><span class="keyword">var</span> tabs = <span class="keyword">new</span> App.Views.Tabs;
+
+<span class="comment">// These will call the methods you've defined</span>
+<span class="comment">// in App.Mixins.Navigation.</span>
+tabs.toggle();
+tabs.open();
+tabs.close();
+</code></pre>
+<h4 id="Models_and_routers">Models and routers</h4>
+<p>You can also use mixins in Models and Routers as well.</p>
+<pre><code class="javascript"><span class="comment">// Router</span>
+App.PageRouter = Backbone.Router.extend(
+  _.extend({}, App.Mixins.HasSettings, {
+
+  <span class="comment">// (Methods and attributes here)</span>
+
+}));
+
+<span class="comment">// Model</span>
+App.Widget = Backbone.Model.extend(
+  _.extend({}, App.Mixins.IsDeletable, {
+
+  <span class="comment">// (Methods and attributes here)</span>
+
+}));
+</code></pre>
+<h1 id="Conventions">Conventions</h1>
+<h2 id="Naming_convention">Naming convention</h2>
+<p>Classes often start in uppercase letters, while instances start with lowercase<br>letters. This is a throwback of the general Python and Ruby practice of having<br>constant names start with uppercase letters.</p>
+<pre><code class="javascript"><span class="comment">// Classes:</span>
+Photo
+Album
+Author
+
+<span class="comment">// Instances:</span>
+photo
+myAlbum
+</code></pre>
+<p>For names with multiple words, JavaScript often calls for CamelCase. Using<br>underscores are discouraged in JavaScript.</p>
+<pre><code class="javascript"><span class="comment">// Good (CamelCase):</span>
+PhotoAlbum
+albumCover
+
+<span class="comment">// Avoid (under_scores):</span>
+photo_album
+album_cover
+</code></pre>
+<h2 id="Namespace_convention">Namespace convention</h2>
+<p>The convention we use puts everything in one <code>App</code> namespace to keep things<br>organized properly.</p>
+<pre><code class="javascript"><span class="built_in">window</span>.App = {
+    ...
+};
+</code></pre>
+<p>Subsequent models, views, and other classes will be made in this namespace.</p>
+<pre><code class="javascript">App.Photo = Backbone.Model.extend({
+    ...
+};
+</code></pre>
+<p>Some people prefer to use namespaces based on their app’s name. Consider, say,<br><code>BF.Photo</code> (instead of <code>App.Photo</code>) if your application name is “Bacefook.”</p>
+<pre><code>Models:                    <span class="filename">App.Photo
+Collections</span>:               <span class="filename">App.Photos
+Views</span>:                     <span class="filename">App.PhotoView
+Main router</span>:               <span class="filename">App.Router
+Custom routers</span>:            <span class="filename">App.SpecialRouter
+
+Router instance</span>:           <span class="filename">App.router
+View instances</span>:            <span class="filename">App.photoView
+Singleton model instances</span>: <span class="filename">App.photo
+Collection instances</span>:      <span class="filename">App.photos</span>
+</code></pre><h4 id="Variation:_two-level_namespace">Variation: two-level namespace</h4>
+<p>Some people prefer a verbose two-level version where the classes are divided<br>into their own namespaces as well.</p>
+<p>This is often done to make it easy to iterate over all available models,<br>     collections, and views.</p>
+<pre><code><span class="attribute">Models</span>: <span class="string">                   App.Models.Photo</span>
+<span class="attribute">Collections</span>: <span class="string">              App.Collections.Photos</span>
+<span class="attribute">Views</span>: <span class="string">                    App.Views.Photo</span>
+</code></pre><h2 id="RequireJS_and_AMD">RequireJS and AMD</h2>
+<p>You may adopt a <a href="http://requirejs.org/docs/whyamd.html">Asynchronous Module Definition</a>-style method of<br>organization using a library like <a href="http://requirejs.org">RequireJS</a>. This will allow you<br>to organize your modules in the <code>require(...)</code> way familiar to those who use<br>NodeJS.</p>
+<p>If you adopt an AMD library, there will be no need to use namespaces for your<br>JavaScript classes.</p>
+<pre><code class="javascript">define(<span class="function"><span class="keyword">function</span><span class="params">(require)</span> </span>{
+  <span class="keyword">var</span> Photo = <span class="built_in">require</span>(<span class="string">'models/photo'</span>);
+  <span class="keyword">var</span> Photos = <span class="built_in">require</span>(<span class="string">'collections/photos'</span>);
+  <span class="keyword">var</span> MenuView = <span class="built_in">require</span>(<span class="string">'views/menu'</span>);
+  <span class="keyword">var</span> MainRouter = <span class="built_in">require</span>(<span class="string">'router/main'</span>);
+
+  <span class="comment">// ...</span>
+});
+</code></pre>
+<p>For more information on RequireJS, AMD, and using it on your Backbone project,<br>see:</p>
+<ul>
+<li><a href="http://backbonetutorials.com/organizing-backbone-using-modules/">Organizing Backbone using Modules</a> (via Backbonetutorials.com)</li>
+<li><a href="http://requirejs.org">RequireJS</a>‘s official site</li>
+</ul>
+<h2 id="File_naming">File naming</h2>
+<p>For applications that do <em>not</em> use <a href="http://requirejs.org/docs/whyamd.html">Asynchronous Module Definition</a>-style<br>organization, there always seem to have 3 basic JavaScript files.</p>
+<h4 id="The_main_namespace">The main namespace</h4>
+<p>This is often <code>app.js</code>, which defines the basic namespace.</p>
+<pre><code class="javascript"><span class="comment">// app.js</span>
+<span class="built_in">window</span>.App = {
+    ...
+};
+</code></pre>
+<h4 id="The_individual_classes">The individual classes</h4>
+<p>If you use the namespacing method outlined earlier in this document, there are 2<br>common naming conventions for individual classes:</p>
+<ul>
+<li><p>Name the files as the exact class name they contain. For instance,<br><code>App.PhotoView</code> should be stored as <code>app/photoview.js</code>.</p>
+</li>
+<li><p>Place each of the class types in their own folders. For instance,<br>the <code>PhotoView</code> may be defined as <code>app/views/photoview.js</code>, or<br><code>views/photoview.js</code>.</p>
+</li>
+</ul>
+<p>In this approach, <strong>avoid</strong> putting code in the files other than the actual<br>class it defines. This makes your convention predictable for the benefit of<br>those new to your project.</p>
+<pre><code class="javascript"><span class="comment">// app/photoview.js</span>
+App.PhotoView = Backbone.View.extend({
+    ...
+});
+</code></pre>
+<h4 id="The_setup/glue_code_file">The setup/glue code file</h4>
+<p>This is the file where you do miscellaneous things that do not belong in any of<br>the Backbone classes:</p>
+<ul>
+<li>Instantiate the default view</li>
+<li>Initialize the Backbone Router</li>
+<li>Provide options for jQuery and its plugins</li>
+</ul>
+<p>This is often named <code>application.js</code> or <code>setup.js</code>.</p>
+<p>In larger projects, this can span multiple files. Don’t be afraid to refactor it<br>to multiple files.</p>
+<p>This is often the only place you will want to put the onload hook<br><code>$(function() { ... })</code>.</p>
+<pre><code class="javascript">$(<span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+  <span class="comment">// Set up some options for jQuery and plugins.</span>
+  $(<span class="built_in">document</span>).ajaxError(<span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    alert(<span class="string">"There was an error."</span>);
+  });
+
+  <span class="comment">// Provide options for your plugins.</span>
+  $(<span class="string">"a[rel~=lightbox]"</span>).click(<span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+    $(<span class="keyword">this</span>).openAsLightbox();
+  });
+
+  Backbone.emulateJSON = <span class="literal">true</span>;
+
+  <span class="comment">// Initialize Backbone views.</span>
+  App.chromeView = <span class="keyword">new</span> App.ChromeView({ el: $(<span class="string">"body"</span>) });
+  App.router = <span class="keyword">new</span> App.Router;
+
+  <span class="comment">// Initialize the Backbone router.</span>
+  Backbone.history.start();
+});
+</code></pre>
+<h4 id="Load_order">Load order</h4>
+<p>Consider loading them in this order:</p>
+<ul>
+<li><code>app.js</code> (the namespace)</li>
+<li><code>app/*.js</code> (individual classes)</li>
+<li><code>setup.js</code> (the glue)</li>
+</ul>
+<pre><code class="html"><span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"javascripts/app.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+<span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"javascripts/app/photo.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+<span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"javascripts/app/photoview.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+<span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"javascripts/app/photos.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+<span class="tag">&lt;<span class="title">script</span> <span class="attribute">src</span>=<span class="value">"javascripts/setup.js"</span>&gt;</span><span class="javascript"></span><span class="tag">&lt;/<span class="title">script</span>&gt;</span>
+</code></pre>
+<h1 id="Anti-patterns">Anti-patterns</h1>
+<p>Here are a few common practices that I believe should generally be avoided.</p>
+<h2 id="$()_abuse">$() abuse</h2>
+<p>jQuery allows you to defer execution of code until when the DOM is fully-loaded<br>with <a href="http://api.jquery.com/ready/">$(document).ready(…)</a>, or its short form, <code>$(...)</code>. This<br>is useful for getting everything set up once your HTML document is ready.</p>
+<pre><code class="javascript">$(<span class="built_in">document</span>).ready(<span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+  <span class="comment">// Initialize the router.</span>
+  App.router = <span class="keyword">new</span> App.MainRouter;
+
+  <span class="comment">// Initialize the main view.</span>
+  App.dashboard = <span class="keyword">new</span> App.Dashboard({ ... });
+
+  <span class="comment">// and so on...</span>
+});
+
+<span class="comment">// Or its shorter form:</span>
+$(<span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+  <span class="comment">// ...</span>
+});
+</code></pre>
+<p>A common anti-pattern is to put class definitions (for views, models, and such)<br>inside these blocks. They are not necessary.</p>
+<pre><code class="javascript"><span class="comment">// AVOID this:</span>
+$(<span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{
+  App.PhotoView = Backbone.View.extend({
+    ...
+  });
+});
+</code></pre>
+<p>Your classes should be ready before the HTML DOM is. This will save you from<br>running into problems later where certain classes may not be available at<br>certain parts of your application.</p>
+<pre><code class="javascript"><span class="comment">// Consider instead:</span>
+App.PhotoView = Backbone.View.extend({
+  ...
+});
+</code></pre>
+<h2 id="Things_outside_views">Things outside views</h2>
+<p>Put things in your view class code as much as possible.</p>
+<h2 id="Event_handlers_outside_views">Event handlers outside views</h2>
+<p>Every time you make an event handler outside a view class, consider making a new<br>view class.</p>
+<pre><code class="javascript">App.PhotoView = Backbone.View.extend({
+  ...
+});
+
+<span class="comment">// AVOID this!</span>
+$(<span class="string">"a.photo"</span>).click(<span class="function"><span class="keyword">function</span><span class="params">()</span> </span>{ ... });
+</code></pre>
+<h2 id="Other_links">Other links</h2>
+<p>Other links of interest:</p>
+<ul>
+<li><a href="http://documentcloud.github.com/backbone/">Backbone</a> official documentation</li>
+<li><a href="http://backbonetutorials.com">Backbonetutorials.com</a> by Thomas Davis covers the basics of<br>Backbone.js in more detail than the official docs.</li>
+<li><a href="https://github.com/addyosmani/backbone-fundamentals">Backbone Fundamentals</a> by Addy Osmani is a Creative Commons book for<br>beginners and advanced users alike.</li>
+</ul>
+<h2 id="Acknowledgements">Acknowledgements</h2>
+<p>© 2011-2012, Rico Sta. Cruz. Released under the <a href="http://www.opensource.org/licenses/mit-license.php">MIT<br>License</a>.</p>
+<p>This document is authored and maintained by <a href="http://ricostacruz.com">Rico Sta. Cruz</a> with help from<br>its <a href="http://github.com/rstacruz/backbone-patterns/contributors">contributors</a>. It is sponsored by my startup, <a href="http://sinefunc.com">Sinefunc, Inc</a>.</p>
+<ul>
+<li><a href="http://ricostacruz.com">My website</a> (ricostacruz.com)</li>
+<li><a href="http://sinefunc.com">Sinefunc, Inc.</a> (sinefunc.com)</li>
+<li><a href="http://github.com/rstacruz">Github</a> (@rstacruz)</li>
+<li><a href="http://twitter.com/rstacruz">Twitter</a> (@rstacruz)</li>
+</ul>
+<h4 id="To_do_list">To do list</h4>
+<ul>
+<li>Model associations</li>
+<li>Adding events to subclasses</li>
+<li>View modes</li>
+<li>Nested views</li>
+<li>Router entry/exit</li>
+<li>View helpers</li>
+</ul>

@@ -1,0 +1,36 @@
+<h1 id="AngularJS_(Performance_Optimized)_TodoMVC_Example">AngularJS (Performance Optimized) TodoMVC Example</h1>
+<blockquote>
+<p>HTML is great for declaring static documents, but it falters when we try to use it for declaring dynamic views in web-applications. AngularJS lets you extend HTML vocabulary for your application. The resulting environment is extraordinarily expressive, readable, and quick to develop.</p>
+<p><em><a href="http://angularjs.org">AngularJS - angularjs.org</a></em></p>
+</blockquote>
+<h2 id="Learning_AngularJS">Learning AngularJS</h2>
+<p>The <a href="http://angularjs.org">AngularJS website</a> is a great resource for getting started.</p>
+<p>Here are some links you may find helpful:</p>
+<ul>
+<li><a href="http://docs.angularjs.org/tutorial">Tutorial</a></li>
+<li><a href="http://docs.angularjs.org/api">API Reference</a></li>
+<li><a href="http://docs.angularjs.org/guide">Developer Guide</a></li>
+<li><a href="http://builtwith.angularjs.org">Applications built with AngularJS</a></li>
+<li><a href="http://blog.angularjs.org">Blog</a></li>
+<li><a href="http://docs.angularjs.org/misc/faq">FAQ</a></li>
+<li><a href="http://www.youtube.com/angularjs">AngularJS Meetups</a></li>
+</ul>
+<p>Articles and guides from the community:</p>
+<ul>
+<li><a href="http://www.codeschool.com/code_tv/angularjs-part-1">Code School AngularJS course</a></li>
+<li><a href="http://net.tutsplus.com/tutorials/javascript-ajax/5-awesome-angularjs-features">5 Awesome AngularJS Features</a></li>
+<li><a href="http://briantford.com/blog/angular-yeoman.html">Using Yeoman with AngularJS</a></li>
+<li><a href="http://stephenplusplus.github.io/meangular">me&amp;ngular - an introduction to MVW</a></li>
+</ul>
+<p>Get help from other AngularJS users:</p>
+<ul>
+<li><a href="http://www.youtube.com/playlist?list=PL1w1q3fL4pmgqpzb-XhG7Clgi67d_OHXz">Walkthroughs and Tutorials on YouTube</a></li>
+<li><a href="https://groups.google.com/forum/?fromgroups#!forum/angular">Google Groups mailing list</a></li>
+<li><a href="http://stackoverflow.com/questions/tagged/angularjs">angularjs on Stack Overflow</a></li>
+<li><a href="https://twitter.com/angularjs">AngularJS on Twitter</a></li>
+<li><a href="https://plus.google.com/+AngularJS/posts">AngularjS on Google +</a></li>
+</ul>
+<p><em>If you have other helpful links to share, or find any of the links above no longer work, please <a href="https://github.com/tastejs/todomvc/issues">let us know</a>.</em></p>
+<h2 id="Implementation">Implementation</h2>
+<p>The normal AngularJS TodoMVC implementation performs deep watching of the todos array object. This means that it keeps an in-memory copy of the complete array that is used for dirty checking in order to detect model mutations. For smaller applications such as TodoMVC, this is completely fine as one trades off a little memory and performance for the sake of simplicity.</p>
+<p>In larger more complex applications however, where one might be working with 100s or 1000s of large objects one definitely should avoid using this approach. This implementation of the AngularJS app demonstrates the correct way to approach this problem when working in larger apps.</p>

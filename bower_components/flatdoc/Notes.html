@@ -1,0 +1,55 @@
+<h1 id="Developer_notes">Developer notes</h1>
+<h3 id="Distributions">Distributions</h3>
+<p>There are 4 official ways to point to flatdoc releases. That is:</p>
+<pre><code><span class="preprocessor"># via cdnjs:</span>
+https:<span class="comment">//cdn.rawgit.com/rstacruz/flatdoc/v0.8.6/flatdoc.js</span>
+
+<span class="preprocessor"># Specific versions</span>
+<span class="preprocessor"># (built using `make v/0.8.1`)</span>
+http:<span class="comment">//rstacruz.github.io/flatdoc/v/0.8.6/*</span>
+
+<span class="preprocessor"># Latest from the 0.8 series.</span>
+<span class="preprocessor"># Updated every time there's a 0.8 release.</span>
+<span class="preprocessor"># (built using `make v/0.8`)</span>
+http:<span class="comment">//rstacruz.github.io/flatdoc/v/0.8/*</span>
+
+<span class="preprocessor"># Latest</span>
+<span class="preprocessor"># (built using `make`)</span>
+http:<span class="comment">//rstacruz.github.io/flatdoc/*</span>
+</code></pre><p>…just replace <code>*</code> with <code>flatdoc.js</code> (or any of the other support files).</p>
+<h3 id="GNU_make">GNU make</h3>
+<p>This project uses GNU make (<code>Makefile</code>) to manage the builds.</p>
+<ul>
+<li><code>make</code> - builds the latest version</li>
+<li><code>make v/0.x.x</code> - builds a given version distribution</li>
+<li><code>make watch</code> - keep rebuilding as needed (useful for development)</li>
+</ul>
+<h3 id="Notes_on_structure">Notes on structure</h3>
+<ul>
+<li><code>flatdoc.js</code> is the main script.</li>
+<li>Distributions are stored in <code>/v/{version}/*</code>.</li>
+<li>CSS files are compiled from Stylus sources.</li>
+</ul>
+<h3 id="Updating_files">Updating files</h3>
+<pre><code># build <span class="keyword">files</span>
+<span class="keyword">make</span>
+
+# ensure it works, <span class="built_in">and</span> install build tools
+npm install
+npm test
+
+# <span class="keyword">update</span> prescribed versions
+<span class="keyword">perl</span> -<span class="keyword">p</span> -<span class="keyword">i</span> -<span class="keyword">e</span> <span class="string">"s/v\d+\.\d+\.\d+/v0.9.0/g"</span> templates/*.html Readme.md
+bump package.json
+git diff
+
+# build <span class="keyword">files</span>
+<span class="keyword">make</span>
+<span class="keyword">make</span> <span class="keyword">v</span>/<span class="number">0.9</span>
+<span class="keyword">make</span> <span class="keyword">v</span>/<span class="number">0.9</span>.<span class="number">0</span>
+
+# <span class="built_in">add</span> release date
+<span class="keyword">vim</span> History.md
+git release v0.<span class="number">8.3</span>
+npm publish
+</code></pre>

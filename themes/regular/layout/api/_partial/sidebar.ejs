@@ -1,7 +1,0 @@
-<% var yuidoc = get_current_yuidoc(); %>
-<aside id="sidebar">
-  <strong class="sidebar-title">Classes</strong>
-  <% _.each(yuidoc.classes, function(obj){ %>
-    <a href="<%- url_for(obj.path) %>" class="sidebar-link<% if (is_current(obj.path)){ %> current<% } %>"><%= obj.name %></a>
-  <% }) %>
-</aside>
