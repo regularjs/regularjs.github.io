@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head prefix="og: http://ogp.me/ns#">
+  <meta charset="utf-8">
+  <title>Regularjs - A comprehensive comparison of  front-end templating solutions</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="shortcut icon" href="/icon.png" >
+  <link rel="canonical" href="http://regularjs.github.io/blog/2015/02/26/template-technology/">
+  <link rel="stylesheet" href="/bower_components/codemirror/lib/codemirror.css" type="text/css">
+
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+
+  
+  <meta name="description" content="Templating is a technology that help us to represent data in different forms. 
+In the old days, choosing a appropriate template engine for client templating is not easy, beacuse you were left with lit">
+<meta property="og:type" content="article">
+<meta property="og:title" content="A comprehensive comparison of  front-end templating solutions">
+<meta property="og:url" content="http://regularjs.github.io/blog/2015/02/26/template-technology/">
+<meta property="og:site_name" content="Regularjs">
+<meta property="og:description" content="Templating is a technology that help us to represent data in different forms. 
+In the old days, choosing a appropriate template engine for client templating is not easy, beacuse you were left with lit">
+<meta property="og:image" content="http://modernweb.com/wp-content/uploads/2014/09/String-based-Template.png">
+<meta property="og:image" content="http://modernweb.com/wp-content/uploads/2014/09/Dom-based-Template.png">
+<meta property="og:image" content="http://modernweb.com/wp-content/uploads/2014/09/Living-Template.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="A comprehensive comparison of  front-end templating solutions">
+<meta name="twitter:description" content="Templating is a technology that help us to represent data in different forms. 
+In the old days, choosing a appropriate template engine for client templating is not easy, beacuse you were left with lit">
+<meta name="twitter:site" content="@regularjs">
+
+  
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-54220110-1', 'regularjs.github.io');
+  ga('send', 'pageview');
+</script>
+
+</head>
+
+<body>
+  <header class="g-top" id='header'>
+  <div class="m-nav m-nav-2 g-cnt">
+    <div class="logo"><a href="/" class="inner"><img src="/image/regular-icon-neg.png" alt="" with=50 height=50></a></div>
+    
+    <ul class="nav">
+      
+        <li> <a href="/example/markdown.html" class=" inner">Example</a></li>
+      
+        <li> <a href="/guide" class=" inner">Guide</a></li>
+      
+        <li> <a href="/reference/" class=" inner">Reference</a></li>
+      
+        <li> <a href="/blog/" class=" inner">Blog</a></li>
+      
+        <li> <a href="https://github.com/regularjs/regular" class=" inner">Github</a></li>
+      
+      <li><a href="#" id="search-btn" class="icon-search2  st-search-launcher icon" title="Search"></a></li>
+      
+    </ul>
+  </div>
+</header>
+
+
+
+  <div class="m-subtitle"> 
+  <h2>Blog <a class="icon icon-feed2" href="/atom.xml"></a></h2>
+</div>
+
+<div class="g-bd">
+  <article class="post" itemscope itemtype="http://schema.org/Article">
+  <header class="post-header">
+    
+  
+    <h1 class="post-title" itemprop="name">
+      A comprehensive comparison of  front-end templating solutions
+    </h1>
+  
+
+    <div class="post-date-wrap">
+  <a href="/blog/2015/02/26/template-technology/" class="post-date">
+    <time datetime="2015-02-26T06:05:02.000Z" itemprop="datePublished">Feb 26 2015</time>
+  </a>
+</div>
+  </header>
+  <div class="entry  m-markdown">
+    
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#innerHTML"><span class="toc-text">innerHTML</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#innerHTML_is_good,_without_doubt"><span class="toc-text">innerHTML is good, without doubt</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#innerHTML_is_disobedient,_sometimes"><span class="toc-text">innerHTML is disobedient, sometimes</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#String-based_templating"><span class="toc-text">String-based templating</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Dom-based_Template_Engine"><span class="toc-text">Dom-based Template Engine</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Living_Template_Engine"><span class="toc-text">Living Template Engine</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1_-_Parsing"><span class="toc-text">1 . Parsing</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2_Compiler"><span class="toc-text">2 Compiler</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#living_template’s_clever_brother_——_React"><span class="toc-text">living template’s clever brother —— React</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#A_comparison_table"><span class="toc-text">A comparison table</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Reference"><span class="toc-text">Reference</span></a></li></ol></li></ol> </ol>
+      <p>Templating is a technology that help us to represent data in different forms. </p>
+<p>In the old days, choosing a appropriate template engine for client templating is not easy, beacuse you were left with little other choice. Nowadays, choosing templating engine is still a big probelm, beacuse there are so many template engines and most of them seems do nothing different(<a href="http://garann.github.io/template-chooser/" target="_blank" rel="external">Template-Engine-Chooser!</a> comes).</p>
+<p>In this article, from a principle perspective ,we will have <strong>A comprehensive comparison of front-end templating solutions</strong>. there are some distinct types of solution that will be mentioned.</p>
+<ol>
+<li>String-based templating (String-based parser &amp; compiler)</li>
+<li>Dom-based templating (Dom-based link &amp; compiler)</li>
+<li>Living templating (combine String-based parser with Dom-based compiler)</li>
+<li>Other:  <a href="https://github.com/mauricemach/coffeekup" target="_blank" rel="external">Coffeekup: Inner DSL based on coffeescript syntax</a></li>
+</ol>
+<p>The article won’t  take the fourth type into detail, except for <a href="https://github.com/facebook/react" target="_blank" rel="external">React</a>. But you will find that react is very similiar with Living templating. beacuse all them is compeletely independent with <code>innerHTML</code>.</p>
+<p>Before diving into detail, let’s talking about <strong><code>innerHTML</code></strong> first.</p>
+<a id="more"></a>
+<hr>
+<h2 id="innerHTML">innerHTML</h2>
+<p><code>innerHTML</code> is the key through this post，so we need to have a brief review on it. But i don’t think there is any necessity to bring <code>innerHTML</code> into detail, since we are all familiar with it. so let’s talk about the pros &amp; cons directly.</p>
+<h3 id="innerHTML_is_good,_without_doubt">innerHTML is good, without doubt</h3>
+<p>Before <code>innerHTML</code> becomes <a href="https://domparsing.spec.whatwg.org/#innerhtml" target="_blank" rel="external">web standard</a>, it has been a conventional “practical standard” for serveral years beacuse its irreplaceable advantages. for example.</p>
+<p><strong>1 . easy to code and intuitive to view</strong></p>
+<p>imagine that you need to append a html like that.</p>
+<figure class="highlight html"><pre><div class="line"><span class="tag">&lt;<span class="title">h2</span> <span class="attribute">title</span>=<span class="value">"header"</span>&gt;</span>title<span class="tag">&lt;/<span class="title">h2</span>&gt;</span></div><div class="line"><span class="tag">&lt;<span class="title">p</span>&gt;</span>content<span class="tag">&lt;/<span class="title">p</span>&gt;</span></div></pre></figure>
+
+<p>use <code>innerHTML</code></p>
+<figure class="highlight javascript"><pre><div class="line">node.innerHTML = <span class="string">"&lt;h2 title="</span>header<span class="string">"&gt;title&lt;/h2&gt;&lt;p&gt;content&lt;/p&gt;"</span></div></pre></figure>
+
+<p>compare with the way using <code>Dom API</code></p>
+<figure class="highlight javascript"><pre><div class="line"><span class="keyword">var</span> header = <span class="built_in">document</span>.createElement(<span class="string">'h2'</span>);</div><div class="line"><span class="keyword">var</span> content = <span class="built_in">document</span>.createElement(<span class="string">'p'</span>);</div><div class="line">h2.setAttribute(<span class="string">'title'</span>, <span class="string">'header'</span>);</div><div class="line">h2.textContent = <span class="string">'title'</span>;</div><div class="line">p.textContent = <span class="string">'content'</span>;</div><div class="line">node.appendChild(header);</div><div class="line">node.appendChild(content);</div></pre></figure>
+
+<p><code>innerHTML</code> obviously win the game.</p>
+<p>Although some frameworks like <a href="http://mootools.net/docs/core/Element/Element#Element:constructor" target="_blank" rel="external">mootools:Element</a> provide some more efficient way to constructing HTML with <code>Dom API</code>, <code>innerHTML</code> is still the most intuitive way.</p>
+<p><strong>2 . it is faster，especially <a href="http://www.quirksmode.org/dom/innerhtml.html" target="_blank" rel="external">in old IE</a></strong></p>
+<p>   &gt; the test maybe out of date in modern browser, the difference between <code>innerHTML</code> and <code>Dom Level 1</code> is become smaller and smaller.</p>
+<p>But we also learned: <em>The recommended way to modify the DOM is to use the DOM Level 1 API.</em></p>
+<p>A great reference to this is Chapter 15 of “Javascript: The Definitive Guide”. Why?</p>
+<h3 id="innerHTML_is_disobedient,_sometimes">innerHTML is disobedient, sometimes</h3>
+<p><strong>1. security issues</strong><br><code>innerHTML</code> has more security issues , especially if you don’t sanitize what you’re putting into it. for example</p>
+<figure class="highlight"><pre><div class="line">document.body.innerHTML = "<span class="tag">&lt;<span class="title">img</span> <span class="attribute">src</span>=<span class="value">x</span> <span class="attribute">onerror</span>=<span class="value">'alert(xss)'</span>/&gt;</span>"</div></pre></figure>
+
+<p>I know you won’t code like this, but if the HTML is not compeltely controlled by yourself(for example : from remote server), it will be a big issue.</p>
+<p><strong>2. it is slow</strong><br>Indeed, I mentioned <code>innerHTML</code> is fast. if you just need change a attribute but replacing all DOM nodes with <code>innerHTML</code> completely, it would be obviously inefficient.</p>
+<p><em>Context is everything</em></p>
+<p><strong>3. not smart enough</strong><br>    it disconnect all existing DOM nodes and rerendering again, all events and state in     previous DOM nodes is gone.</p>
+<p><strong>4. potential for generating invalid markup with invalid markup.</strong><br>    html parser is so “friendly”, it even <a href="http://stackoverflow.com/questions/25559999/why-arent-browsers-strict-about-html" target="_blank" rel="external">accpet invalid html</a>,  but developer wont get any ‘parse error ‘during the parsing.</p>
+<p><em>Maybe it’s not innerHTML that is the problem, but constructing HTML with string operations is.</em></p>
+<p>we have thought through <code>innerHTML</code> already, it is time to talk about “templating solutions” now.</p>
+<h2 id="String-based_templating">String-based templating</h2>
+<blockquote>
+<p>It is essentially a way to address the need to populate an HTML view with data in a better way than having to write a big, ugly string concatenation expression.<br>—- cited from <a href="http://www.dehats.com/drupal/?q=node/107" target="_blank" rel="external">http://www.dehats.com/drupal/?q=node/107</a></p>
+</blockquote>
+<p>String-based templating is the most common solution we ever used. beacuse frontend templating is derivatived from backend,  in server side the output must be a string , so the browser can render it. </p>
+<p><strong>Example</strong></p>
+<ol>
+<li>mustache: less-logic support</li>
+<li>Dust.js: rich-logic support</li>
+<li>doT.js: super fast</li>
+</ol>
+<p><strong>The basic process</strong></p>
+<p><a href="http://modernweb.com/wp-content/uploads/2014/09/String-based-Template.png" target="_blank" rel="external"><img src="http://modernweb.com/wp-content/uploads/2014/09/String-based-Template.png" alt="String-based Template" width="540" class="alignnone size-medium wp-image-3150"></a></p>
+<p>As shown above, string-based templating is tightly coupled with <code>innerHTML</code> (for Rendering).</p>
+<p><strong>pros</strong></p>
+<ol>
+<li>Faster initialize time</li>
+<li>Isomorphic: support rendering on server-side and client-side.<br>beacuse this solution is compeletely dom-independent.</li>
+<li>More powerful template-logic support (all depend on the design of your DSL )</li>
+</ol>
+<p><strong>cons</strong></p>
+<ol>
+<li>security issue: see <code>innerHTML</code> section</li>
+<li>not smart enough: see <code>innerHTML</code> section</li>
+<li>performance issue when updating.<br>Although the string-based template is become more and more faster beacuse of the intense competition,we need also to take into account the time taken to load the template output into the DOM which is actually <a href="https://github.com/leonidas/transparency/wiki/Defining-template-engine-performance" target="_blank" rel="external">the real bottleneck</a>.</li>
+</ol>
+<h2 id="Dom-based_Template_Engine">Dom-based Template Engine</h2>
+<p>In recent years, dom-based begun to pop up, the prime example is Angular that earned almost 28000 stars in github. </p>
+<p><strong>Example</strong></p>
+<ol>
+<li>Angularjs: most popular one</li>
+<li>Knockout: the early one</li>
+<li>Vuejs: upstart, more concise and aiming to build interactive UI, enough is as good as a feast.</li>
+</ol>
+<p><strong>The basic process</strong></p>
+<p><a href="http://modernweb.com/wp-content/uploads/2014/09/Dom-based-Template.png" target="_blank" rel="external"><img class="alignnone size-medium wp-image-3143" src="http://modernweb.com/wp-content/uploads/2014/09/Dom-based-Template.png" alt="Dom-based Template" width="540"></a></p>
+<p>dom-based template doesn’t have their own parser, so if you need creating view from a template string, you have to use <code>innerHTML</code> to convert the string to dom(parsing), then walk the dom tree using the Dom API(<code>attributes</code>, <code>getAttribute</code>, <code>firstChild</code>… etc). All information like directives is hold by the dom node and its attributes.</p>
+<p>In fact, the whole process is more like reshaping than rendering. </p>
+<p><strong>pros</strong></p>
+<ol>
+<li>output dom is Living.</li>
+<li>is <strong>runtime</strong> efficient.</li>
+<li>using directive(or other similar concepts), the coding  style is pure declarative, just like you writing html. </li>
+</ol>
+<p><strong>cons</strong></p>
+<ol>
+<li>have no parser themselves, syntax is restricted by dom and is hard to embed logic in it.</li>
+<li>also have security issues beacuse using of <code>innerHTML</code>.</li>
+<li>will have some useless placeholder on generated dom , beacuse dom-based template need this information to act operation. for example, if you <a href="http://todomvc.com/architecture-examples/angularjs/" target="_blank" rel="external">inspect the angular’s todomvc</a>， you can some placeholder (<code>ng-show</code>, etc) in every nodes.</li>
+</ol>
+<h2 id="Living_Template_Engine">Living Template Engine</h2>
+<p>string-based and dom-based template are all tightly coupled with <code>innerHTML</code>, the differrence is: String-based template use <code>innerHTML</code> for <strong>Rendering</strong> and Dom-based use it for <strong>Parsing</strong>.</p>
+<p><strong>Why not combining String-based parser and Dom-based compiler to abate the dependence on <code>innerHTML</code> ?</strong></p>
+<p>In fact, there have been servaral templates that realized in this way .</p>
+<p><strong>Example</strong></p>
+<ol>
+<li><a href="https://github.com/tildeio/htmlbars" target="_blank" rel="external">htmlbar</a>: built on top of Handlebars template compiler.</li>
+<li><a href="https://github.com/ractivejs/ractive" target="_blank" rel="external">ractivejs</a>: standalone</li>
+<li><a href="https://github.com/regularjs/regular" target="_blank" rel="external">Regularjs</a> standalone</li>
+</ol>
+<p><strong>The basic process</strong></p>
+<p><a href="http://modernweb.com/wp-content/uploads/2014/09/Living-Template.png" target="_blank" rel="external"><img class="alignnone size-medium wp-image-3144" src="http://modernweb.com/wp-content/uploads/2014/09/Living-Template.png" alt="Living Template" width="540"></a></p>
+<p>As shown in the picture above, parsing and compiling are similar with String-based template and dom-based template respectively</p>
+<h3 id="1_-_Parsing">1 . Parsing</h3>
+<p>First. it use a builtin parser to parse the template string then output a AST. </p>
+<p>for example, template string(syntax base on <a href="https://github.com/regularjs/regular" target="_blank" rel="external">regularjs</a>)</p>
+<figure class="highlight html"><pre><div class="line"><span class="tag">&lt;<span class="title">button</span> {#<span class="attribute">if</span> !<span class="attribute">isLogin</span>} <span class="attribute">on-click</span>=<span class="value">{this.login()}</span> {/<span class="attribute">if</span>}&gt;</span></div><div class="line">  {isLogin? 'Login': 'Wellcome'}</div><div class="line"><span class="tag">&lt;/<span class="title">button</span>&gt;</span>'</div></pre></figure>
+
+<p>will be parsed to:</p>
+<figure class="highlight javascript"><pre><div class="line">[</div><div class="line">  {</div><div class="line">    <span class="string">"type"</span>: <span class="string">"element"</span>,</div><div class="line">    <span class="string">"tag"</span>: <span class="string">"button"</span>,</div><div class="line">    <span class="string">"attrs"</span>: [</div><div class="line">      {</div><div class="line">        <span class="string">"type"</span>: <span class="string">"if"</span>,</div><div class="line">        <span class="string">"test"</span>: {</div><div class="line">          <span class="string">"type"</span>: <span class="string">"expression"</span>,</div><div class="line">          <span class="string">"body"</span>: <span class="string">"(!_d_['isLogin'])"</span>,</div><div class="line">          <span class="string">"constant"</span>: <span class="literal">false</span>,</div><div class="line">          <span class="string">"setbody"</span>: <span class="literal">false</span></div><div class="line">        },</div><div class="line">        <span class="string">"consequent"</span>: [</div><div class="line">          [</div><div class="line">            {</div><div class="line">              <span class="string">"type"</span>: <span class="string">"attribute"</span>,</div><div class="line">              <span class="string">"name"</span>: <span class="string">"on-click"</span>,</div><div class="line">              <span class="string">"value"</span>: {</div><div class="line">                <span class="string">"type"</span>: <span class="string">"expression"</span>,</div><div class="line">                <span class="string">"body"</span>: <span class="string">"_c_['login']()"</span>,</div><div class="line">                <span class="string">"constant"</span>: <span class="literal">false</span>,</div><div class="line">                <span class="string">"setbody"</span>: <span class="literal">false</span></div><div class="line">              }</div><div class="line">            }</div><div class="line">          ]</div><div class="line">        ],</div><div class="line">        <span class="string">"alternate"</span>: []</div><div class="line">      }</div><div class="line">    ],</div><div class="line">    <span class="string">"children"</span>: [</div><div class="line">      {</div><div class="line">        <span class="string">"type"</span>: <span class="string">"expression"</span>,</div><div class="line">        <span class="string">"body"</span>: <span class="string">"_d_['isLogin']?'Login':'Wellcome'"</span>,</div><div class="line">        <span class="string">"constant"</span>: <span class="literal">false</span>,</div><div class="line">        <span class="string">"setbody"</span>: <span class="literal">false</span></div><div class="line">      }</div><div class="line">    ]</div><div class="line">  }</div><div class="line">]</div></pre></figure>
+
+<ol>
+<li>it is very similar with the string-based template, so we can use more powerful syntax (it is all depend on the DSL you defined). </li>
+<li>string-based templates only parse the “dsl element” and consider the “xml element” as the “text”. but in living template, we need parse the “xml” together with the “dsl element” to make it be <strong>dom-aware</strong>. beacuse we need the infomation for creating living dom.</li>
+<li>unlike Dom-based templating, instead of real dom, the AST holds the all information we needed(statement, directive, attributes and tagname…etc). <ol>
+<li>it is more <strong>lightweight</strong>, setter and getter on dom is expensive.</li>
+<li>it is <strong>reusable</strong>.</li>
+<li>it can <strong>be serialized</strong> , so you can preparse it on server.</li>
+</ol>
+</li>
+<li>only output the necessary part.<br>compare with dom-based template, living template’s output is more clean. <a href="http://codepen.io/leeluolee/pen/dGxCb" target="_blank" rel="external">inspect regularjs’s todomvc on codepen.io</a></li>
+</ol>
+<figure class="highlight javascript"><pre><div class="line">&lt;ul id=<span class="string">"todo-list"</span>&gt;</div><div class="line">  <span class="xml"><span class="comment">&lt;!--Regular list--&gt;</span></span></div><div class="line">  <span class="tag">&lt;<span class="title">li</span> <span class="attribute">class</span>=<span class="value">"completed"</span>&gt;</span></div><div class="line">    <span class="tag">&lt;<span class="title">div</span> <span class="attribute">class</span>=<span class="value">"view"</span>&gt;</span></div><div class="line">      </div><div class="line">      <span class="tag">&lt;<span class="title">label</span>&gt;</span>sleep<span class="tag">&lt;/<span class="title">label</span>&gt;</span></div><div class="line">      <span class="tag">&lt;<span class="title">button</span> <span class="attribute">class</span>=<span class="value">"destroy"</span>&gt;</span><span class="tag">&lt;/<span class="title">button</span>&gt;</span></div><div class="line">    <span class="tag">&lt;/<span class="title">div</span>&gt;</span></div><div class="line">    </div><div class="line">  <span class="tag">&lt;/<span class="title">li</span>&gt;</span></div><div class="line"><span class="tag">&lt;/<span class="title">ul</span>&gt;</span></div></pre></figure>
+
+
+<h3 id="2_Compiler">2 Compiler</h3>
+<p>with spcified model (in regularjs, it is a plain object), template engine walks the AST and generating the dom recursively, meanwhile, according to the directive and other binder(event, inteplation… etc), it also create the binding between model and dom to <strong>make the dom living</strong>. </p>
+<p>for example, just like the inteplation <code>{isLogin? &#39;Login&#39;: &#39;Wellcome&#39;}</code> showed above.  once the compiler seen it, the <code>expression</code> walker will be called.</p>
+<figure class="highlight javascript"><pre><div class="line"><span class="comment">// some source from regularjs</span></div><div class="line"></div><div class="line">walkers.expression = <span class="function"><span class="keyword">function</span><span class="params">(ast)</span></span>{</div><div class="line">  <span class="keyword">var</span> node = <span class="built_in">document</span>.createTextNode(<span class="string">""</span>);</div><div class="line">  <span class="keyword">this</span>.$watch(ast, <span class="function"><span class="keyword">function</span><span class="params">(newval)</span></span>{</div><div class="line">    dom.text(node, <span class="string">""</span> + (newval == <span class="literal">null</span>? <span class="string">""</span>: <span class="built_in">String</span>(newval)));</div><div class="line">  })</div><div class="line">  <span class="keyword">return</span> node;</div><div class="line">}</div></pre></figure>
+
+<p>as shown above, once the expression changed, node.textContent(or innerText) will changes synchronous.</p>
+<p>Compare to string-based template, instead of <code>innerHTML</code>, it use <code>DOM</code> api(createElement, setAttribute, createTextNode…etc ) to generate the dom. so it is safe.</p>
+<p>In fact, in compiling phase, the most difference between Living template and dom-based template is: __dom-based template act a reshaping on dom nodes, But living template is building that according to the resuable AST.</p>
+<h3 id="living_template’s_clever_brother_——_React">living template’s clever brother —— React</h3>
+<p>React can be considered as a templating solution，it avoid be coupled with <code>innerHTML</code> by using virtual dom which is created by nested function call(you can also use jsx syntax)</p>
+<p><strong>Example</strong></p>
+<figure class="highlight"><pre><div class="line">var MyComponent = React.createClass({</div><div class="line"> render: function() {</div><div class="line">   <span class="keyword">if</span> (<span class="keyword">this</span>.props.first) {</div><div class="line">     <span class="keyword">return</span> &lt;<span class="keyword">div</span> className=<span class="string">"first"</span>&gt;&lt;span&gt;A Span&lt;<span class="regexp">/span&gt;&lt;/</span><span class="keyword">div</span>&gt;;</div><div class="line">   } <span class="keyword">else</span> {</div><div class="line">     <span class="keyword">return</span> &lt;<span class="keyword">div</span> className=<span class="string">"second"</span>&gt;&lt;p&gt;A Paragraph&lt;<span class="regexp">/p&gt;&lt;/</span><span class="keyword">div</span>&gt;;</div><div class="line">   }</div><div class="line"> }</div><div class="line">});</div></pre></figure>
+
+<p>which in regularjs</p>
+<figure class="highlight html"><pre><div class="line">{#if first}</div><div class="line">  <span class="tag">&lt;<span class="title">div</span> <span class="attribute">className</span>=<span class="value">"first"</span>&gt;</span><span class="tag">&lt;<span class="title">span</span>&gt;</span>A Span<span class="tag">&lt;/<span class="title">span</span>&gt;</span><span class="tag">&lt;/<span class="title">div</span>&gt;</span></div><div class="line">{#else}</div><div class="line">  <span class="tag">&lt;<span class="title">div</span> <span class="attribute">className</span>=<span class="value">"second"</span>&gt;</span><span class="tag">&lt;<span class="title">p</span>&gt;</span>A Paragraph<span class="tag">&lt;/<span class="title">p</span>&gt;</span><span class="tag">&lt;/<span class="title">div</span>&gt;</span>;</div><div class="line">{/if}</div></pre></figure>
+
+<p><strong>Every one thinks in his way</strong>, And I prefer using template to describe my structure, do you?</p>
+<h2 id="A_comparison_table">A comparison table</h2>
+<p><strong>Warning: </strong></p>
+<table>
+<thead>
+<tr>
+<th>Contrast /Solutions</th>
+<th>String-based templating</th>
+<th>Dom-based templating</th>
+<th>Living templating</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Example</td>
+<td>Mustache,Dustjs</td>
+<td>Angularjs, Vuejs</td>
+<td>Regularjs 、Ractivejs、htmlbars</td>
+</tr>
+<tr>
+<td>Syntax</td>
+<td>&diams;&diams;&diams;</td>
+<td>&diams;</td>
+<td>&diams;&diams;&diams;</td>
+</tr>
+<tr>
+<td>Living Dom</td>
+<td>X</td>
+<td>&diams;&diams;&diams;</td>
+<td>&diams;&diams;&diams;</td>
+</tr>
+<tr>
+<td>Security</td>
+<td>&diams;</td>
+<td>&diams;&diams;</td>
+<td>&diams;&diams;&diams;</td>
+</tr>
+<tr>
+<td>SVG support(*1)</td>
+<td>X</td>
+<td>&diams;&diams;</td>
+<td>&diams;&diams;&diams;</td>
+</tr>
+<tr>
+<td>Dom independent</td>
+<td>&diams;&diams;&diams;</td>
+<td>X</td>
+<td>&diams;&diams;</td>
+</tr>
+<tr>
+<td>Server Rendering</td>
+<td>&diams;&diams;&diams;</td>
+<td>&diams;</td>
+<td>&diams;</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>no one can compeletely replace another one. </li>
+<li>They are not necessarily incompatible, for example, you can use string-based template engine to generate template string for dom-based template.</li>
+</ol>
+<h3 id="Reference">Reference</h3>
+<ol>
+<li><a href="http://codingarchitect.wordpress.com/2012/10/22/template-engines/" target="_blank" rel="external">Template Engines by @Sendhil</a></li>
+<li><a href="http://modernweb.com/2014/03/24/string-templating-considered-harmful/" target="_blank" rel="external">string-templating-considered-harmful</a></li>
+</ol>
+
+    
+
+  </div>
+  
+    <footer class="post-footer">
+      <!-- Tweet button -->
+<a href="https://twitter.com/share" class="twitter-share-button" data-url="http://regularjs.github.io/blog/2015/02/26/template-technology/" data-text="A comprehensive comparison of  front-end templating solutions" data-hashtags="javascript, regularjs, HTML5 ">Tweet</a>
+<!-- Facebook like button -->
+<iframe src="//www.facebook.com/plugins/like.php?href=http%3A%2F%2Fregularjs.github.io%2Fblog%2F2015%2F02%2F26%2Ftemplate-technology%2F&amp;width=90&amp;layout=button_count&amp;action=like&amp;show_faces=false&amp;share=false&amp;height=21&amp;appId=145365378826124" scrolling="no" frameborder="0" style="border:none; overflow:hidden; width:90px; height:21px;" allowTransparency="true"></iframe>
+<!-- Google +1 button -->
+<g:plusone size="medium" href="http://regularjs.github.io/blog/2015/02/26/template-technology/"></g:plusone>
+      
+      
+      <div class="clearfix"></div>
+    </footer>
+    
+<section id="comments">
+  <div id="disqus_thread">
+    <noscript>Please enable JavaScript to view the <a href="//disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </div>
+</section>
+
+  
+
+</article>
+</div>
+
+  
+<footer class="m-footer">
+  <p class="license">Release under <a href="https://github.com/regularjs/regular/blob/master/LICENSE" target="_blank">MIT License</a>| Copyright&nbsp;©&nbsp;2014&nbsp;&nbsp;<a href="https://leeluolee.github.io" target="_blank">@leeluolee</a>. Reserved</p>
+  <p class="rights"> Background from <a href="http://subtlepatterns.com/shattered/" target="_blank">Shattered</a> | powered by <a href="//hexo.io">Hexo</a></p>
+
+</footer>
+
+
+  
+
+<!-- Disqus -->
+<script>
+  var disqus_shortname = 'regularjs';
+  
+  var disqus_url = 'http://regularjs.github.io/blog/2015/02/26/template-technology/';
+  
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//go.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+  
+</script>
+
+<!-- Swiftype -->
+<script>
+var Swiftype = window.Swiftype || {};
+(function() {
+  Swiftype.key = 'fDxc-hEngMPFuZ1VP_FJ';
+  /** DO NOT EDIT BELOW THIS LINE **/
+  var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+  script.src = "//s.swiftypecdn.com/embed.js";
+  var entry = document.getElementsByTagName('script')[0];
+  document.getElementsByTagName('script')[0].parentNode.insertBefore(script, entry);
+}());
+</script>
+<script src="/bower_components/jquery/dist/jquery.min.js" type="text/javascript"></script>
+
+<script src="/bower_components/regularjs/dist/regular.min.js" type="text/javascript"></script>
+
+<script src="/bower_components/codemirror/lib/codemirror.js" type="text/javascript"></script>
+
+<script src="/bower_components/codemirror/mode/javascript/javascript.js" type="text/javascript"></script>
+
+<script src="/bower_components/codemirror/mode/xml/xml.js" type="text/javascript"></script>
+
+
+<script async src="//codepen.io/assets/embed/ei.js"></script>
+
+
+<!-- Twitter -->
+<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+
+</body>
+</html>
