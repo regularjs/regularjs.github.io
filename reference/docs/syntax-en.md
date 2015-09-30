@@ -162,7 +162,7 @@ with data `{list: ['Add','Update','Delete']}`, output:
 
 
 
-__regularjs is also support advanced usage , like two-way filter,see [Component.filter](https://regularjs.github.io/guide/zh/basic/filter.html) for Detail__
+__regularjs is also support advanced usage , like two-way filter,see [Component.filter](?api-en#two-way-filter) for Detail__
 
 
 

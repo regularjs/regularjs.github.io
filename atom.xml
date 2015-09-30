@@ -4,7 +4,7 @@
   <subtitle><![CDATA[A Flexible library for writing data-driven component]]></subtitle>
   <link href="/atom.xml" rel="self"/>
   <link href="http://regularjs.github.io/"/>
-  <updated>2015-02-27T17:04:56.521Z</updated>
+  <updated>2015-09-30T02:45:27.766Z</updated>
   <id>http://regularjs.github.io/</id>
   
   <author>
@@ -19,7 +19,7 @@
     <link href="http://regularjs.github.io/blog/2015/02/26/template-technology/"/>
     <id>http://regularjs.github.io/blog/2015/02/26/template-technology/</id>
     <published>2015-02-26T06:05:02.000Z</published>
-    <updated>2015-02-26T06:11:55.000Z</updated>
+    <updated>2015-07-09T10:05:00.000Z</updated>
     <content type="html"><![CDATA[<p>Templating is a technology that help us to represent data in different forms. </p>
 <p>In the old days, choosing a appropriate template engine for client templating is not easy, beacuse you were left with little other choice. Nowadays, choosing templating engine is still a big probelm, beacuse there are so many template engines and most of them seems do nothing different(<a href="http://garann.github.io/template-chooser/" target="_blank" rel="external">Template-Engine-Chooser!</a> comes).</p>
 <p>In this article, from a principle perspective ,we will have <strong>A comprehensive comparison of front-end templating solutions</strong>. there are some distinct types of solution that will be mentioned.</p>
@@ -261,7 +261,7 @@
     <link href="http://regularjs.github.io/blog/2014/07/26/2014-7-26-animation-rethink/"/>
     <id>http://regularjs.github.io/blog/2014/07/26/2014-7-26-animation-rethink/</id>
     <published>2014-07-25T16:00:00.000Z</published>
-    <updated>2015-01-30T04:47:19.000Z</updated>
+    <updated>2015-07-09T10:05:00.000Z</updated>
     <content type="html"><![CDATA[<h2 id="Introduction">Introduction</h2>
 <p>Today, beacuse of new trends like <a href="http://www.google.com/design/spec/material-design/introduction.html" target="_blank" rel="external">material design</a> and motion design, the animation is become more and more important in web-development.</p>
 <p>On the other hand, thanks for the standardized <a href="">web-component</a> and frameworks like angularjs, knockoutjs, reactjs and vuejs etc.  building the view of application in declartive way is coming into popular .</p>

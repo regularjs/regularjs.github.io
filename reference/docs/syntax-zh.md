@@ -149,7 +149,7 @@ with data `{list: ['Add','Update','Delete']}`, output:
 
 
 
-__regularjs 同时支持一些高阶用法，例如双向过滤器。查看 [[Guide/filter](https://regularjs.github.io/guide/zh/basic/filter.html) 了解更多__
+__regularjs 同时支持一些高阶用法，例如双向过滤器。查看 [[Guide/filter](?api-zh#two-way-filter) 了解更多__
 
 
 
